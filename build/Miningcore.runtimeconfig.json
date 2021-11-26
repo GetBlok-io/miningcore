@@ -6,8 +6,7 @@
       "version": "5.0.0"
     },
     "configProperties": {
-      "System.GC.Server": true,
-      "System.Reflection.Metadata.MetadataUpdater.IsSupported": false
+      "System.GC.Server": true
     }
   }
 }

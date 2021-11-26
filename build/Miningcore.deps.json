@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v5.0": {
-      "Miningcore/59.0.1+13": {
+      "Miningcore/0.1.0+2302": {
         "dependencies": {
           "AspNetCoreRateLimit": "4.0.1",
           "AutoMapper": "10.1.1",
@@ -678,7 +678,7 @@
     }
   },
   "libraries": {
-    "Miningcore/59.0.1+13": {
+    "Miningcore/0.1.0+2302": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

@@ -14,6 +14,7 @@ namespace Miningcore.Persistence.Repositories
         Task<Block[]> PageBlocksAsync(IDbConnection con, string poolId, BlockStatus[] status, int page, int pageSize);
         Task<Block[]> PageBlocksAsync(IDbConnection con, BlockStatus[] status, int page, int pageSize);
         Task<Block[]> GetPendingBlocksForPoolAsync(IDbConnection con, string poolId);
+        Task<Block[]> GetConfirmedBlocksForPoolAsync(IDbConnection con, string poolId);
         Task<Block> GetBlockBeforeAsync(IDbConnection con, string poolId, BlockStatus[] status, DateTime before);
         Task<uint> GetPoolBlockCountAsync(IDbConnection con, string poolId);
         Task<DateTime?> GetLastPoolBlockTimeAsync(IDbConnection con, string poolId);

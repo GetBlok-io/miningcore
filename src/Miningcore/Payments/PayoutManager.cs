@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Reactive.Concurrency;
@@ -173,27 +174,26 @@ namespace Miningcore.Payments
                         if(!block.Effort.HasValue)  // fill block effort if empty
                             await CalculateBlockEffortAsync(pool, config, block, handler, ct);
 
-                        switch(block.Status)
+                        switch(block.ConfirmationProgress)
                         {
-                            case BlockStatus.Confirmed:
-                                // blockchains that do not support block-reward payments via coinbase Tx
-                                // must generate balance records for all reward recipients instead
-                                if(block.ConfirmationProgress == 1)
-                                {
-                                    var blockReward = await handler.UpdateBlockRewardBalancesAsync(con, tx, pool, block, ct);
+                            case double prog when prog == 1:
+                            // blockchains that do not support block-reward payments via coinbase Tx
+                            // must generate balance records for all reward recipients instead
+                                //var blockReward = await handler.UpdateBlockRewardBalancesAsync(con, tx, pool, block, ct);
 
-                                    await scheme.UpdateBalancesAsync(con, tx, pool, handler, block, blockReward, ct);
-                                    await blockRepo.UpdateBlockAsync(con, tx, block);
-                                }
-                                else
-                                {
-                                    logger.Warn(() => $"Block has status {block.Status} but has a ConfirmationProgress equal to {block.ConfirmationProgress}!");
-                                    await blockRepo.UpdateBlockAsync(con, tx, block);
-                                }
+                                //await scheme.UpdateBalancesAsync(con, tx, pool, handler, block, blockReward, ct);
+
+                                // Lets first update the block to have confirmation progress of 1 in the db
+                                await blockRepo.UpdateBlockAsync(con, tx, block);
+
+                                // Send payout to holding address
+                                await SendPayoutToHolding(config, block, ct);
+
+                                // If payout to holding was successful, then we update block repo again to show that block now has confirmed status
+                                await blockRepo.UpdateBlockAsync(con, tx, block);
                                 break;
 
-                            case BlockStatus.Orphaned:
-                            case BlockStatus.Pending:
+                            case double prog when prog < 1:
                                 await blockRepo.UpdateBlockAsync(con, tx, block);
                                 break;
                         }
@@ -207,25 +207,19 @@ namespace Miningcore.Payments
 
         private async Task PayoutPoolBalancesAsync(IMiningPool pool, PoolConfig config, IPayoutHandler handler, CancellationToken ct)
         {
-            var poolBalancesOverMinimum = await cf.Run(con =>
-                balanceRepo.GetPoolBalancesOverThresholdAsync(con, config.Id, config.PaymentProcessing.MinimumPayment));
+            // get confirmed blocks from blockRepo for pool
+            var confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPoolAsync(con, config.Id));
 
-            if(poolBalancesOverMinimum.Length > 0)
+            foreach(var block in confirmedBlocks)
             {
-                try
+                await cf.RunTx(async (con, tx) =>
                 {
-                    await handler.PayoutAsync(pool, poolBalancesOverMinimum, ct);
-                }
-
-                catch(Exception ex)
-                {
-                    await NotifyPayoutFailureAsync(poolBalancesOverMinimum, config, ex);
-                    throw;
-                }
+                    // We distribute payouts for each confirmed block.
+                    await DistributePayouts(config, block, ct);
+                    // If payout to members was successful, then we update block repo again to show that block now has paid status
+                    await blockRepo.UpdateBlockAsync(con, tx, block);
+                });
             }
-
-            else
-                logger.Info(() => $"No balances over configured minimum payout for pool {config.Id}");
         }
 
         private Task NotifyPayoutFailureAsync(Balance[] balances, PoolConfig pool, Exception ex)
@@ -259,6 +253,53 @@ namespace Miningcore.Payments
             // handler has the final say
             if(accumulatedShareDiffForBlock.HasValue)
                 await handler.CalculateBlockEffortAsync(pool, block, accumulatedShareDiffForBlock.Value, ct);
+        }
+
+        private async Task SendPayoutToHolding(PoolConfig config, Block block, CancellationToken ct)
+        {
+            Process p = new Process();
+
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.FileName = "java";
+            p.StartInfo.Arguments = $"-jar ./smartpool.jar -h {block.BlockHeight}";
+            p.Start();
+
+            await p.WaitForExitAsync(ct);
+            if(p.ExitCode == 0)
+            {
+                logger.Info(() => $"Successfully sent rewards from block at height {block.BlockHeight} to holding address.");
+                block.Status = BlockStatus.Confirmed;
+                logger.Info(() => $"Block status now changed to confirmed.");
+            }
+            else
+            {
+                logger.Warn(() => $"Rewards for block at height {block.BlockHeight} could not be sent to holding address!");
+                logger.Warn(() => $"SmartPoolApp exited with code {p.ExitCode}");
+            }
+        }
+
+        private async Task DistributePayouts(PoolConfig config, Block block, CancellationToken ct)
+        {
+            // Start the child process.
+            Process p = new Process();
+            // Redirect the output stream of the child process.
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.FileName = "java";
+            p.StartInfo.Arguments = $"-jar ./smartpool.jar -d {block.BlockHeight}";
+            p.Start();
+            
+            await p.WaitForExitAsync(ct);
+            if(p.ExitCode == 0)
+            {
+                logger.Info(() => $"Successfully sent payouts to members of SmartPool.");
+                block.Status = BlockStatus.Paid;
+                logger.Info(() => $"Block status now changed to paid.");
+            }
+            else
+            {
+                logger.Warn(() => $"Payouts for block {block.BlockHeight} could not be sent to SmartPool members!");
+                logger.Warn(() => $"SmartPoolApp exited with code {p.ExitCode}");
+            }
         }
 
         protected override async Task ExecuteAsync(CancellationToken ct)

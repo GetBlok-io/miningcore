@@ -90,22 +90,15 @@ namespace Miningcore.Payments
         public virtual async Task<decimal> UpdateBlockRewardBalancesAsync(IDbConnection con, IDbTransaction tx, IMiningPool pool, Block block, CancellationToken ct)
         {
             var blockRewardRemaining = block.Reward;
+            var amount = block.Reward;
+            var address = poolConfig.Address;
 
-            // Distribute funds to configured reward recipients
-            foreach(var recipient in poolConfig.RewardRecipients.Where(x => x.Percentage > 0))
-            {
-                var amount = block.Reward * (recipient.Percentage / 100.0m);
-                var address = recipient.Address;
+            blockRewardRemaining -= amount;
 
-                blockRewardRemaining -= amount;
+            // skip transfers from pool wallet to pool wallet
+            logger.Info(() => $"Adding {FormatAmount(amount)} balance to pool address");
+            await balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for block {block.BlockHeight}");
 
-                // skip transfers from pool wallet to pool wallet
-                if(address != poolConfig.Address)
-                {
-                    logger.Info(() => $"Adding {FormatAmount(amount)} to balance of {address}");
-                    await balanceRepo.AddAmountAsync(con, tx, poolConfig.Id, address, amount, $"Reward for block {block.BlockHeight}");
-                }
-            }
 
             return blockRewardRemaining;
         }

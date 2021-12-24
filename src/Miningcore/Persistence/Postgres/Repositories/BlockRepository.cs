@@ -96,6 +96,16 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 .Select(mapper.Map<Block>)
                 .ToArray();
         }
+        public async Task<Block[]> GetConfirmedBlocksForPoolAsync(IDbConnection con, string poolId)
+        {
+            logger.LogInvoke(new object[] { poolId });
+
+            const string query = "SELECT * FROM blocks WHERE poolid = @poolid AND status = @status";
+
+            return (await con.QueryAsync<Entities.Block>(query, new { status = BlockStatus.Confirmed.ToString().ToLower(), poolid = poolId }))
+                .Select(mapper.Map<Block>)
+                .ToArray();
+        }
 
         public async Task<Block> GetBlockBeforeAsync(IDbConnection con, string poolId, BlockStatus[] status, DateTime before)
         {

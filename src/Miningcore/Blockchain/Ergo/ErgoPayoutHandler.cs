@@ -229,7 +229,9 @@ namespace Miningcore.Blockchain.Ergo
                                 if(walletTx.NumConfirmations >= minConfirmations)
                                 {
                                     // matured and spendable coinbase transaction
-                                    block.Status = BlockStatus.Confirmed;
+                                    // block.Status = BlockStatus.Confirmed;
+                                    // We change block status to confirmed after getting return value from smart pool jar
+                                    // This ensures we don't send multiple payouts to the holding address for the same block
                                     block.ConfirmationProgress = 1;
                                 }
                             }
@@ -241,7 +243,7 @@ namespace Miningcore.Blockchain.Ergo
                         {
                             result.Add(block);
 
-                            if(block.Status == BlockStatus.Confirmed && block.ConfirmationProgress == 1)
+                            if(block.ConfirmationProgress == 1)
                             {
                                 logger.Info(() => $"[{LogCategory}] Unlocked block {block.BlockHeight} worth {FormatAmount(block.Reward)}");
                                 logger.Info(() => $"[{LogCategory}] Block has status {block.Status} and confirmationProgress: {block.ConfirmationProgress * 100}%");
@@ -269,10 +271,10 @@ namespace Miningcore.Blockchain.Ergo
                         
                         if(!string.IsNullOrEmpty(orphanReason))
                         {
-                            block.Status = BlockStatus.Pending;
+                            block.Status = BlockStatus.Orphaned;
                             //result.Add(block);
 
-                            logger.Info(() => $"[{LogCategory}] Block {block.BlockHeight} classified as orphaned due to {orphanReason}. Status kept as Pending until admin oversight.");
+                            logger.Info(() => $"[{LogCategory}] Block {block.BlockHeight} classified as orphaned due to {orphanReason}.");
 
                            // messageBus.NotifyBlockUnlocked(poolConfig.Id, block, coin);
                         }

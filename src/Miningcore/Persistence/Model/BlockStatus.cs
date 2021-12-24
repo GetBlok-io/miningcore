@@ -4,6 +4,7 @@ namespace Miningcore.Persistence.Model
     {
         Pending = 1,
         Orphaned = 2,
-        Confirmed = 3
+        Confirmed = 3,
+        Paid = 4
     }
 }

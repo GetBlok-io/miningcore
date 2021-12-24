@@ -281,7 +281,7 @@ namespace Miningcore.Payments
 
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.FileName = "java";
-            p.StartInfo.Arguments = $" -jar {jarPath} -h {block.BlockHeight}";
+            p.StartInfo.Arguments = $"-jar {jarPath}smartpool.jar -c={jarPath}sp_config.json -d {block.BlockHeight}";
             logger.Info(() => $"Command being run: java {p.StartInfo.Arguments}");
             p.Start();
             
@@ -306,7 +306,7 @@ namespace Miningcore.Payments
             // Redirect the output stream of the child process.
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.FileName = "java";
-            p.StartInfo.Arguments = $" -jar {jarPath} -d {block.BlockHeight}";
+            p.StartInfo.Arguments = $"-jar {jarPath}smartpool.jar -c={jarPath}sp_config.json -d {block.BlockHeight}";
             
             logger.Info(() => $"Command being run: java {p.StartInfo.Arguments}");
 

@@ -187,20 +187,30 @@ namespace Miningcore.Payments
                         switch(block.ConfirmationProgress)
                         {
                             case double prog when prog == 1:
-                            // blockchains that do not support block-reward payments via coinbase Tx
-                            // must generate balance records for all reward recipients instead
+                                // blockchains that do not support block-reward payments via coinbase Tx
+                                // must generate balance records for all reward recipients instead
                                 //var blockReward = await handler.UpdateBlockRewardBalancesAsync(con, tx, pool, block, ct);
 
                                 //await scheme.UpdateBalancesAsync(con, tx, pool, handler, block, blockReward, ct);
+                                if(block.Status == BlockStatus.Pending)
+                                {
+                                    // Lets first update the block to have confirmation progress of 1 in the db
+                                    await blockRepo.UpdateBlockAsync(con, tx, block);
 
-                                // Lets first update the block to have confirmation progress of 1 in the db
-                                await blockRepo.UpdateBlockAsync(con, tx, block);
+                                    // Send payout to holding address
+                                    await SendPayoutToHolding(smartPoolJarPath, block, ct);
 
-                                // Send payout to holding address
-                                await SendPayoutToHolding(smartPoolJarPath, block, ct);
-
-                                // If payout to holding was successful, then we update block repo again to show that block now has confirmed status
-                                await blockRepo.UpdateBlockAsync(con, tx, block);
+                                    // If payout to holding was successful, then we update block repo again to show that block now has confirmed status
+                                    await blockRepo.UpdateBlockAsync(con, tx, block);
+                                }else if(block.Status == BlockStatus.Confirmed)
+                                {
+                                    block.Status = BlockStatus.Paid;
+                                    await blockRepo.UpdateBlockAsync(con, tx, block);
+                                }
+                                else
+                                {
+                                    await blockRepo.UpdateBlockAsync(con, tx, block);
+                                }
                                 break;
 
                             case double prog when prog < 1:

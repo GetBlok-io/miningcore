@@ -272,11 +272,18 @@ namespace Miningcore.Blockchain.Ergo
                         if(!string.IsNullOrEmpty(orphanReason))
                         {
                             block.Status = BlockStatus.Orphaned;
-                            //result.Add(block);
+                            result.Add(block);
 
                             logger.Info(() => $"[{LogCategory}] Block {block.BlockHeight} classified as orphaned due to {orphanReason}.");
 
-                           // messageBus.NotifyBlockUnlocked(poolConfig.Id, block, coin);
+                            // messageBus.NotifyBlockUnlocked(poolConfig.Id, block, coin);
+                        }
+                        else
+                        {
+                            block.Status = BlockStatus.Orphaned;
+                            result.Add(block);
+
+                            logger.Info(() => $"[{LogCategory}] Block {block.BlockHeight} classified as orphaned due to unknown reason.");
                         }
                     }
                 }

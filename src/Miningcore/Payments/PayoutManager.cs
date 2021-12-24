@@ -240,12 +240,11 @@ namespace Miningcore.Payments
             {
                 await cf.RunTx(async (con, tx) =>
                 {
-                    block.Status = BlockStatus.Paid;
-                    await blockRepo.UpdateBlockAsync(con, tx, block);
+                    
                     // We distribute payouts for each confirmed block.
-                    //await DistributePayouts(smartPoolJarPath, block, ct);
+                    await DistributePayouts(smartPoolJarPath, block, ct);
                     // If payout to members was successful, then we update block repo again to show that block now has paid status
-                    //await blockRepo.UpdateBlockAsync(con, tx, block);
+                    await blockRepo.UpdateBlockAsync(con, tx, block);
                 });
             }
         }

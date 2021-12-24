@@ -281,9 +281,10 @@ namespace Miningcore.Payments
 
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.FileName = "java";
-            p.StartInfo.Arguments = $"-jar {jarPath} -h {block.BlockHeight}";
+            p.StartInfo.Arguments = $" -jar {jarPath} -h {block.BlockHeight}";
+            logger.Info(() => $"Command being run: java {p.StartInfo.Arguments}");
             p.Start();
-
+            
             await p.WaitForExitAsync(ct);
             if(p.ExitCode == 0)
             {
@@ -305,7 +306,10 @@ namespace Miningcore.Payments
             // Redirect the output stream of the child process.
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.FileName = "java";
-            p.StartInfo.Arguments = $"-jar {jarPath} -d {block.BlockHeight}";
+            p.StartInfo.Arguments = $" -jar {jarPath} -d {block.BlockHeight}";
+            
+            logger.Info(() => $"Command being run: java {p.StartInfo.Arguments}");
+
             p.Start();
             
             await p.WaitForExitAsync(ct);

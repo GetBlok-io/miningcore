@@ -288,7 +288,7 @@ namespace Miningcore.Payments
 
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.FileName = "java";
-            p.StartInfo.Arguments = $"-jar {jarPath}smartpool.jar -c={jarPath}sp_config.json -d {block.BlockHeight}";
+            p.StartInfo.Arguments = $"-jar {jarPath}smartpool.jar -c={jarPath}sp_config.json -h {block.BlockHeight}";
             logger.Info(() => $"Command being run: java {p.StartInfo.Arguments}");
             p.Start();
             

@@ -157,6 +157,16 @@ namespace Miningcore.Payments
 
         private async Task UpdatePoolBalancesAsync(IMiningPool pool, PoolConfig config, IPayoutHandler handler, IPayoutScheme scheme, CancellationToken ct)
         {
+
+            var smartPoolJarPath = "";
+            if(config.Extra.TryGetValue("smartPoolJarPath", out var result))
+                smartPoolJarPath = ((string) result).Trim();
+
+            if(smartPoolJarPath == "")
+            {
+                logger.Warn(() => "No smartPoolJarPath was found in configuration. Payout manager will not run jar commands or update db");
+                return;
+            }
             // get pending blockRepo for pool
             var pendingBlocks = await cf.Run(con => blockRepo.GetPendingBlocksForPoolAsync(con, config.Id));
 
@@ -187,7 +197,7 @@ namespace Miningcore.Payments
                                 await blockRepo.UpdateBlockAsync(con, tx, block);
 
                                 // Send payout to holding address
-                                await SendPayoutToHolding(config, block, ct);
+                                await SendPayoutToHolding(smartPoolJarPath, block, ct);
 
                                 // If payout to holding was successful, then we update block repo again to show that block now has confirmed status
                                 await blockRepo.UpdateBlockAsync(con, tx, block);
@@ -207,6 +217,16 @@ namespace Miningcore.Payments
 
         private async Task PayoutPoolBalancesAsync(IMiningPool pool, PoolConfig config, IPayoutHandler handler, CancellationToken ct)
         {
+            var smartPoolJarPath = "";
+            if(config.Extra.TryGetValue("smartPoolJarPath", out var result))
+                smartPoolJarPath = ((string) result).Trim();
+
+            if(smartPoolJarPath == "")
+            {
+                logger.Warn(() => "No smartPoolJarPath was found in configuration. Payout manager will not run jar commands or update db");
+                return;
+            }
+
             // get confirmed blocks from blockRepo for pool
             var confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPoolAsync(con, config.Id));
 
@@ -215,7 +235,7 @@ namespace Miningcore.Payments
                 await cf.RunTx(async (con, tx) =>
                 {
                     // We distribute payouts for each confirmed block.
-                    await DistributePayouts(config, block, ct);
+                    await DistributePayouts(smartPoolJarPath, block, ct);
                     // If payout to members was successful, then we update block repo again to show that block now has paid status
                     await blockRepo.UpdateBlockAsync(con, tx, block);
                 });
@@ -255,13 +275,13 @@ namespace Miningcore.Payments
                 await handler.CalculateBlockEffortAsync(pool, block, accumulatedShareDiffForBlock.Value, ct);
         }
 
-        private async Task SendPayoutToHolding(PoolConfig config, Block block, CancellationToken ct)
+        private async Task SendPayoutToHolding(String jarPath, Block block, CancellationToken ct)
         {
             Process p = new Process();
 
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.FileName = "java";
-            p.StartInfo.Arguments = $"-jar ./smartpool.jar -h {block.BlockHeight}";
+            p.StartInfo.Arguments = $"-jar {jarPath} -h {block.BlockHeight}";
             p.Start();
 
             await p.WaitForExitAsync(ct);
@@ -278,14 +298,14 @@ namespace Miningcore.Payments
             }
         }
 
-        private async Task DistributePayouts(PoolConfig config, Block block, CancellationToken ct)
+        private async Task DistributePayouts(String jarPath, Block block, CancellationToken ct)
         {
             // Start the child process.
             Process p = new Process();
             // Redirect the output stream of the child process.
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.FileName = "java";
-            p.StartInfo.Arguments = $"-jar ./smartpool.jar -d {block.BlockHeight}";
+            p.StartInfo.Arguments = $"-jar {jarPath} -d {block.BlockHeight}";
             p.Start();
             
             await p.WaitForExitAsync(ct);

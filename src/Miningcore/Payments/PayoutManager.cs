@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -172,7 +173,7 @@ namespace Miningcore.Payments
 
             // classify
             var updatedBlocks = await handler.ClassifyBlocksAsync(pool, pendingBlocks, ct);
-
+            List<Block> blocksToSend = new List<Block>();
             if(updatedBlocks.Any())
             {
                 foreach(var block in updatedBlocks.OrderBy(x => x.Created))
@@ -197,11 +198,7 @@ namespace Miningcore.Payments
                                     // Lets first update the block to have confirmation progress of 1 in the db
                                     await blockRepo.UpdateBlockAsync(con, tx, block);
 
-                                    // Send payout to holding address
-                                    await SendPayoutToHolding(smartPoolJarPath, block, ct);
-
-                                    // If payout to holding was successful, then we update block repo again to show that block now has confirmed status
-                                    await blockRepo.UpdateBlockAsync(con, tx, block);
+                                    blocksToSend.Add(block);
                                 }
                                 else
                                 {
@@ -215,8 +212,15 @@ namespace Miningcore.Payments
                         }
                     });
                 }
+                await cf.RunTx(async (con, tx) =>
+                {
+                    await SendPayoutToHolding(smartPoolJarPath, blocksToSend.ToArray(), ct);
+                    foreach(Block block in blocksToSend.ToArray())
+                    {
+                        await blockRepo.UpdateBlockAsync(con, tx, block);
+                    }
+                });
             }
-
             else
                 logger.Info(() => $"No updated blocks for pool {config.Id}");
         }
@@ -236,13 +240,16 @@ namespace Miningcore.Payments
             // get confirmed blocks from blockRepo for pool
             var confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPoolAsync(con, config.Id));
 
+            await cf.RunTx(async (con, tx) =>
+            {
+                // We distribute payouts for each confirmed block.
+                await DistributePayouts(smartPoolJarPath, confirmedBlocks, ct);
+            });
+
             foreach(var block in confirmedBlocks)
             {
                 await cf.RunTx(async (con, tx) =>
                 {
-                    
-                    // We distribute payouts for each confirmed block.
-                    await DistributePayouts(smartPoolJarPath, block, ct);
                     // If payout to members was successful, then we update block repo again to show that block now has paid status
                     await blockRepo.UpdateBlockAsync(con, tx, block);
                 });

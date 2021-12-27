@@ -282,38 +282,89 @@ namespace Miningcore.Payments
                 await handler.CalculateBlockEffortAsync(pool, block, accumulatedShareDiffForBlock.Value, ct);
         }
 
-        private async Task SendPayoutToHolding(String jarPath, Block block, CancellationToken ct)
+        private async Task SendPayoutToHolding(String jarPath, Block[] blocks, CancellationToken ct)
         {
             Process p = new Process();
 
+            string cmdString = "";
+
+            if(blocks.Length > 1)
+            {
+                cmdString += "[";
+                for(int i = 0; i < blocks.Length; i++)
+                {
+                    cmdString += blocks[i].BlockHeight.ToString();
+                    if(i != blocks.Length - 1)
+                    {
+                        cmdString += ",";
+                    }
+                }
+                cmdString += "]";
+            }
+            else if(blocks.Length == 1)
+            {
+                cmdString = blocks[0].BlockHeight.ToString();
+            }
+            else
+            {
+                return;
+            }
+
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.FileName = "java";
-            p.StartInfo.Arguments = $"-jar {jarPath}smartpool.jar -c={jarPath}sp_config.json -h {block.BlockHeight}";
+            p.StartInfo.Arguments = $"-jar {jarPath}smartpool.jar -c={jarPath}sp_config.json -h {cmdString}";
             logger.Info(() => $"Command being run: java {p.StartInfo.Arguments}");
             p.Start();
             
             await p.WaitForExitAsync(ct);
             if(p.ExitCode == 0)
             {
-                logger.Info(() => $"Successfully sent rewards from block at height {block.BlockHeight} to holding address.");
-                block.Status = BlockStatus.Confirmed;
+                logger.Info(() => $"Successfully sent rewards for block(s) {cmdString} to holding address.");
+                foreach(Block block in blocks)
+                {
+                    block.Status = BlockStatus.Confirmed;
+                }
                 logger.Info(() => $"Block status now changed to confirmed.");
             }
             else
             {
-                logger.Warn(() => $"Rewards for block at height {block.BlockHeight} could not be sent to holding address!");
+                logger.Warn(() => $"Rewards for block(s) at height {cmdString} could not be sent to holding address!");
                 logger.Warn(() => $"SmartPoolApp exited with code {p.ExitCode}");
             }
         }
 
-        private async Task DistributePayouts(String jarPath, Block block, CancellationToken ct)
+        private async Task DistributePayouts(String jarPath, Block[] blocks, CancellationToken ct)
         {
             // Start the child process.
             Process p = new Process();
             // Redirect the output stream of the child process.
+            string cmdString = "";
+
+            if(blocks.Length > 1)
+            {
+                cmdString += "[";
+                for(int i = 0; i < blocks.Length; i++)
+                {
+                    cmdString += blocks[i].BlockHeight.ToString();
+                    if(i != blocks.Length - 1)
+                    {
+                        cmdString += ",";
+                    }
+                }
+                cmdString += "]";
+            }
+            else if(blocks.Length == 1)
+            {
+                cmdString = blocks[0].BlockHeight.ToString();
+            }
+            else
+            {
+                return;
+            }
+
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.FileName = "java";
-            p.StartInfo.Arguments = $"-jar {jarPath}smartpool.jar -c={jarPath}sp_config.json -d {block.BlockHeight}";
+            p.StartInfo.Arguments = $"-jar {jarPath}smartpool.jar -c={jarPath}sp_config.json -d {cmdString}";
             
             logger.Info(() => $"Command being run: java {p.StartInfo.Arguments}");
 
@@ -323,12 +374,15 @@ namespace Miningcore.Payments
             if(p.ExitCode == 0)
             {
                 logger.Info(() => $"Successfully sent payouts to members of SmartPool.");
-                block.Status = BlockStatus.Paid;
-                logger.Info(() => $"Block status now changed to paid.");
+                foreach(Block block in blocks)
+                {
+                    block.Status = BlockStatus.Paid;
+                }
+                logger.Info(() => $"Block statuses now changed to paid.");
             }
             else
             {
-                logger.Warn(() => $"Payouts for block {block.BlockHeight} could not be sent to SmartPool members!");
+                logger.Warn(() => $"Payouts for block(s) {cmdString} could not be sent to SmartPool members!");
                 logger.Warn(() => $"SmartPoolApp exited with code {p.ExitCode}");
             }
         }

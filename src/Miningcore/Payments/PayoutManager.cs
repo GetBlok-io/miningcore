@@ -237,8 +237,8 @@ namespace Miningcore.Payments
                 return;
             }
 
-            // get confirmed blocks from blockRepo for pool
-            var confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPoolAsync(con, config.Id));
+            // get first 10 confirmed blocks and pay them out
+            var confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPayoutAsync(con, config.Id));
 
             await cf.RunTx(async (con, tx) =>
             {

@@ -100,7 +100,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
         {
             logger.LogInvoke(new object[] { poolId });
 
-            const string query = "SELECT * FROM blocks WHERE poolid = @poolid AND status = @status ORDER BY created FETCH NEXT 10 ROWS ONLY";
+            const string query = "SELECT * FROM blocks WHERE poolid = @poolid AND status = @status ORDER BY created FETCH NEXT 5 ROWS ONLY";
 
             return (await con.QueryAsync<Entities.Block>(query, new { status = BlockStatus.Pending.ToString().ToLower(), poolid = poolId }))
                 .Select(mapper.Map<Block>)

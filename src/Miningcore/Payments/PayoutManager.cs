@@ -169,7 +169,7 @@ namespace Miningcore.Payments
                 return;
             }
             // get pending blockRepo for pool
-            var pendingBlocks = await cf.Run(con => blockRepo.GetPendingBlocksForPoolAsync(con, config.Id));
+            var pendingBlocks = await cf.Run(con => blockRepo.GetPendingBlocksForPayoutAsync(con, config.Id));
 
             // classify
             var updatedBlocks = await handler.ClassifyBlocksAsync(pool, pendingBlocks, ct);

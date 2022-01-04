@@ -35,6 +35,11 @@ namespace Miningcore.Api.Controllers
             minerRepo = ctx.Resolve<IMinerRepository>();
             shareRepo = ctx.Resolve<IShareRepository>();
             paymentsRepo = ctx.Resolve<IPaymentRepository>();
+
+            smartpoolRepo = ctx.Resolve<ISmartPoolRepository>();
+            consensusRepo = ctx.Resolve<IConsensusRepository>();
+
+
             clock = ctx.Resolve<IMasterClock>();
             pools = ctx.Resolve<ConcurrentDictionary<string, IMiningPool>>();
             adcp = _adcp;
@@ -45,6 +50,8 @@ namespace Miningcore.Api.Controllers
         private readonly IPaymentRepository paymentsRepo;
         private readonly IMinerRepository minerRepo;
         private readonly IShareRepository shareRepo;
+        private readonly ISmartPoolRepository smartpoolRepo;
+        private readonly IConsensusRepository consensusRepo;
         private readonly IMasterClock clock;
         private readonly IActionDescriptorCollectionProvider adcp;
         private readonly ConcurrentDictionary<string, IMiningPool> pools;
@@ -336,6 +343,33 @@ namespace Miningcore.Api.Controllers
 
             return blocks;
         }
+
+
+        [HttpGet("{poolId}/smartpool")]
+        public async Task<Responses.SmartPoolResponse> GetCurrentSmartPoolAsync(
+            string poolId, [FromQuery] int epoch = 0, [FromQuery] int height = 0)
+        {
+            var pool = GetPool(poolId);
+
+           if(epoch == 0 && height == 0)
+            {
+                var smartpool = (await cf.Run(con => smartpoolRepo.GetLastSmartPoolEntry(con, poolId)));
+                var smartpoolResponse = mapper.Map<Responses.SmartPoolResponse>(smartpool);
+                return smartpoolResponse;
+            }else if(height == 0)
+            {
+                var smartpool = (await cf.Run(con => smartpoolRepo.GetSmartPoolEntryByEpochAsync(con, poolId, epoch)));
+                var smartpoolResponse = mapper.Map<Responses.SmartPoolResponse>(smartpool);
+                return smartpoolResponse;
+            }
+            else
+            {
+                var smartpool = (await cf.Run(con => smartpoolRepo.GetSmartPoolEntryByHeightAsync(con, poolId, height)));
+                var smartpoolResponse = mapper.Map<Responses.SmartPoolResponse>(smartpool);
+                return smartpoolResponse;
+            }
+        }
+
 
         [HttpGet("/api/v2/pools/{poolId}/blocks")]
         public async Task<PagedResultResponse<Responses.Block[]>> PagePoolBlocksV2Async(

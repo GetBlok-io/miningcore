@@ -91,7 +91,7 @@ namespace Miningcore
             CreateMap<Persistence.Postgres.Entities.MinerWorkerPerformanceStats, MinerWorkerPerformanceStats>();
             CreateMap<Persistence.Postgres.Entities.MinerWorkerPerformanceStats, Api.Responses.MinerPerformanceStats>();
             CreateMap<Persistence.Postgres.Entities.SmartPool, Api.Responses.SmartPoolResponse>();
-
+            CreateMap<Persistence.Postgres.Entities.SmartPool, SmartPool>();
             CreateMap<PoolStats, Mining.PoolStats>();
             CreateMap<BlockchainStats, Mining.PoolStats>();
 

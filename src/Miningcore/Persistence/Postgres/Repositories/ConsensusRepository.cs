@@ -64,7 +64,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
         {
             logger.LogInvoke(new object[] { poolId });
 
-            var query = $"SELECT * FROM smartpool_data WHERE poolid = @poolId AND miner = @miner";
+            var query = $"SELECT * FROM consensus WHERE poolid = @poolId AND miner = @miner";
 
             return (await con.QueryAsync<Entities.Consensus>(query, new { poolId, miner }))
                 .Select(mapper.Map<Consensus>)

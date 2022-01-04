@@ -345,7 +345,7 @@ namespace Miningcore.Api.Controllers
         }
 
 
-        [HttpGet("{poolId}/smartpool")]
+        [HttpGet("/api/pools/{poolId}/smartpool")]
         public async Task<Responses.SmartPoolResponse> GetCurrentSmartPoolAsync(
             string poolId, [FromQuery] int epoch = 0, [FromQuery] int height = 0)
         {

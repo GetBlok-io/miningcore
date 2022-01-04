@@ -60,7 +60,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 .ToArray();
         }
 
-        public async Task<Consensus[]> GetConsensusEntriesByMiner(IDbConnection con, string poolId, string miner)
+        public async Task<Consensus[]> GetConsensusEntriesByMinerAsync(IDbConnection con, string poolId, string miner)
         {
             logger.LogInvoke(new object[] { poolId });
 
@@ -70,6 +70,29 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 .Select(mapper.Map<Consensus>)
                 .ToArray();
         }
+
+        public async Task<Consensus[]> GetConsensusEntriesByMinerAndEpochAsync(IDbConnection con, string poolId, long epoch, string miner)
+        {
+            logger.LogInvoke(new object[] { poolId });
+
+            var query = $"SELECT * FROM consensus WHERE poolid = @poolId AND epoch = @epoch AND miner = @miner";
+
+            return (await con.QueryAsync<Entities.Consensus>(query, new { poolId, epoch,  miner }))
+                .Select(mapper.Map<Consensus>)
+                .ToArray();
+        }
+
+        public async Task<Consensus[]> GetConsensusEntriesByMinerAndHeightAsync(IDbConnection con, string poolId, long height, string miner)
+        {
+            logger.LogInvoke(new object[] { poolId });
+
+            var query = $"SELECT * FROM consensus WHERE poolid = @poolId AND height = @height AND miner = @miner";
+
+            return (await con.QueryAsync<Entities.Consensus>(query, new { poolId, height, miner }))
+                .Select(mapper.Map<Consensus>)
+                .ToArray();
+        }
+
     }
 }
 

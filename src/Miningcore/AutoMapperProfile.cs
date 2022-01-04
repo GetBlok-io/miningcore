@@ -67,9 +67,11 @@ namespace Miningcore
             CreateMap<Payment, Persistence.Postgres.Entities.Payment>();
             CreateMap<MinerSettings, Persistence.Postgres.Entities.MinerSettings>();
             CreateMap<PoolStats, Persistence.Postgres.Entities.PoolStats>();
+
             CreateMap<SmartPool, Persistence.Postgres.Entities.SmartPool>();
             CreateMap<SmartPool, Api.Responses.SmartPoolResponse>();
             CreateMap<Consensus, Persistence.Postgres.Entities.Consensus>();
+            CreateMap<Consensus, Api.Responses.ConsensusResponse>();
 
             CreateMap<MinerWorkerPerformanceStats, Persistence.Postgres.Entities.MinerWorkerPerformanceStats>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore());
@@ -90,8 +92,13 @@ namespace Miningcore
             CreateMap<Persistence.Postgres.Entities.MinerSettings, MinerSettings>();
             CreateMap<Persistence.Postgres.Entities.MinerWorkerPerformanceStats, MinerWorkerPerformanceStats>();
             CreateMap<Persistence.Postgres.Entities.MinerWorkerPerformanceStats, Api.Responses.MinerPerformanceStats>();
+
             CreateMap<Persistence.Postgres.Entities.SmartPool, Api.Responses.SmartPoolResponse>();
             CreateMap<Persistence.Postgres.Entities.SmartPool, SmartPool>();
+            CreateMap<Persistence.Postgres.Entities.Consensus, Api.Responses.ConsensusResponse>();
+            CreateMap<Persistence.Postgres.Entities.Consensus, Consensus>();
+
+
             CreateMap<PoolStats, Mining.PoolStats>();
             CreateMap<BlockchainStats, Mining.PoolStats>();
 

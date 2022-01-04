@@ -353,22 +353,83 @@ namespace Miningcore.Api.Controllers
 
            if(epoch == 0 && height == 0)
             {
-                var smartpool = (await cf.Run(con => smartpoolRepo.GetLastSmartPoolEntry(con, poolId)));
+                var smartpool = (await cf.Run(con => smartpoolRepo.GetLastSmartPoolEntryAsync(con, poolId)));
                 var smartpoolResponse = mapper.Map<Responses.SmartPoolResponse>(smartpool);
                 return smartpoolResponse;
-            }else if(height == 0)
+            }else if(height == 0 && epoch > 0)
             {
                 var smartpool = (await cf.Run(con => smartpoolRepo.GetSmartPoolEntryByEpochAsync(con, poolId, epoch)));
                 var smartpoolResponse = mapper.Map<Responses.SmartPoolResponse>(smartpool);
                 return smartpoolResponse;
             }
-            else
+            else if(epoch == 0 && height > 0)
             {
                 var smartpool = (await cf.Run(con => smartpoolRepo.GetSmartPoolEntryByHeightAsync(con, poolId, height)));
                 var smartpoolResponse = mapper.Map<Responses.SmartPoolResponse>(smartpool);
                 return smartpoolResponse;
             }
+            else
+            {
+                return null;
+            }
         }
+
+        [HttpGet("/api/pools/{poolId}/smartpool/consensus")]
+        public async Task<Responses.ConsensusResponse[]> GetCurrentConsensusAsync(
+    string poolId, [FromQuery] int epoch = 0, [FromQuery] int height = 0, [FromQuery] string miner = null)
+        {
+            var pool = GetPool(poolId);
+
+            if(epoch == 0 && height == 0 && miner == null)
+            {
+                return null;
+            }
+            else if(height == 0 && epoch > 0)
+            {
+                if(miner == null)
+                {
+                    var consensus = (await cf.Run(con => consensusRepo.GetConsensusEntriesByEpochAsync(con, poolId, epoch)))
+                        .Select(mapper.Map<Responses.ConsensusResponse>)
+                        .ToArray();
+                    return consensus;
+                }
+                else
+                {
+                    var consensus = (await cf.Run(con => consensusRepo.GetConsensusEntriesByMinerAndEpochAsync(con, poolId, epoch, miner)))
+                        .Select(mapper.Map<Responses.ConsensusResponse>)
+                        .ToArray();
+                    return consensus;
+                }
+            }
+            else if(epoch == 0 && height > 0)
+            {
+                if(miner == null)
+                {
+                    var consensus = (await cf.Run(con => consensusRepo.GetConsensusEntriesByHeightAsync(con, poolId, height)))
+                        .Select(mapper.Map<Responses.ConsensusResponse>)
+                        .ToArray();
+                    return consensus;
+                }
+                else
+                {
+                    var consensus = (await cf.Run(con => consensusRepo.GetConsensusEntriesByMinerAndHeightAsync(con, poolId, height, miner)))
+                        .Select(mapper.Map<Responses.ConsensusResponse>)
+                        .ToArray();
+                    return consensus;
+                }
+            }else if(epoch == 0 && height == 0 && miner != null)
+            {
+                var consensus = (await cf.Run(con => consensusRepo.GetConsensusEntriesByMinerAsync(con, poolId, miner)))
+                    .Select(mapper.Map<Responses.ConsensusResponse>)
+                    .ToArray();
+                return consensus;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
 
 
         [HttpGet("/api/v2/pools/{poolId}/blocks")]

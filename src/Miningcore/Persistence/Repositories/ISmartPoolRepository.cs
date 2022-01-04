@@ -13,7 +13,7 @@ namespace Miningcore.Persistence.Repositories
         Task<SmartPool> GetSmartPoolEntryByEpochAsync(IDbConnection con, string poolId, long epoch);
         Task<SmartPool> GetSmartPoolEntryByHeightAsync(IDbConnection con, string poolId, long height);
         Task<SmartPool> GetSmartPoolEntryByTxAsync(IDbConnection con, string poolId, string transactionHash);
-        Task<SmartPool> GetLastSmartPoolEntry(IDbConnection con, string poolId);
+        Task<SmartPool> GetLastSmartPoolEntryAsync(IDbConnection con, string poolId);
 
     }
 }

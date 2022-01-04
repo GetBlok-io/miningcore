@@ -61,7 +61,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
               .FirstOrDefault();
         }
 
-        public async Task<SmartPool> GetLastSmartPoolEntry(IDbConnection con, string poolId)
+        public async Task<SmartPool> GetLastSmartPoolEntryAsync(IDbConnection con, string poolId)
         {
             logger.LogInvoke(new object[] { poolId });
 

@@ -2,7 +2,7 @@ using System;
 
 namespace Miningcore.Api.Responses
 {
-    public class GetConsensusResponse
+    public class ConsensusResponse
     {
         public string PoolId { get; set; }
         public string TransactionHash { get; set; }

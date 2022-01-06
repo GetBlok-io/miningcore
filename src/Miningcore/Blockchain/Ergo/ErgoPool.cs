@@ -97,7 +97,7 @@ namespace Miningcore.Blockchain.Ergo
             context.IsAuthorized = await manager.ValidateAddress(minerName, ct);
             context.Miner = minerName;
             context.Worker = workerName;
-
+            
             if(context.IsAuthorized)
             {
                 // respond

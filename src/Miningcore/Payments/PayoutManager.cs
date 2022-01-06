@@ -32,6 +32,9 @@ namespace Miningcore.Payments
     /// </summary>
     public class PayoutManager : BackgroundService
     {
+        private ISmartPoolRepository smartpoolRepo;
+        private IConsensusRepository consensusRepo;
+
         public PayoutManager(IComponentContext ctx,
             IConnectionFactory cf,
             IBlockRepository blockRepo,
@@ -54,7 +57,8 @@ namespace Miningcore.Payments
             this.balanceRepo = balanceRepo;
             this.messageBus = messageBus;
             this.clusterConfig = clusterConfig;
-
+            smartpoolRepo = ctx.Resolve<ISmartPoolRepository>();
+            consensusRepo = ctx.Resolve<IConsensusRepository>();
             interval = TimeSpan.FromSeconds(clusterConfig.PaymentProcessing.Interval > 0 ?
                 clusterConfig.PaymentProcessing.Interval : 600);
         }
@@ -236,9 +240,25 @@ namespace Miningcore.Payments
                 logger.Warn(() => "No smartPoolJarPath was found in configuration. Payout manager will not run jar commands or update db");
                 return;
             }
+            var smartpool = (await cf.Run(con => smartpoolRepo.GetLastSmartPoolEntryAsync(con, config.Id)));
 
-            // get first 10 confirmed blocks and pay them out
+            // get first 5 confirmed blocks and pay them out
             var confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPayoutAsync(con, config.Id));
+            var exitCode = -1;
+            await cf.RunTx(async (con, tx) =>
+            {
+                // We distribute payouts for each confirmed block.
+                exitCode = await CheckLastPayments(smartPoolJarPath, smartpool.Height, confirmedBlocks, ct);
+                foreach(Block block in confirmedBlocks)
+                {
+                    await blockRepo.UpdateBlockAsync(con, tx, block);
+                }
+            });
+
+            if(exitCode == 0)
+            {
+                confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPayoutAsync(con, config.Id));
+            }
 
             await cf.RunTx(async (con, tx) =>
             {
@@ -246,14 +266,6 @@ namespace Miningcore.Payments
                 await DistributePayouts(smartPoolJarPath, confirmedBlocks, ct);
             });
 
-            foreach(var block in confirmedBlocks)
-            {
-                await cf.RunTx(async (con, tx) =>
-                {
-                    // If payout to members was successful, then we update block repo again to show that block now has paid status
-                    await blockRepo.UpdateBlockAsync(con, tx, block);
-                });
-            }
         }
 
         private Task NotifyPayoutFailureAsync(Balance[] balances, PoolConfig pool, Exception ex)
@@ -381,6 +393,37 @@ namespace Miningcore.Payments
             if(p.ExitCode == 0)
             {
                 logger.Info(() => $"Successfully sent payouts to members of SmartPool.");
+                
+            }
+            else
+            {
+                logger.Warn(() => $"Payouts for block(s) {cmdString} could not be sent to SmartPool members!");
+                logger.Warn(() => $"SmartPoolApp exited with code {p.ExitCode}");
+            }
+        }
+
+        private async Task<int> CheckLastPayments(String jarPath, ulong height, Block[] blocks, CancellationToken ct)
+        {
+
+
+            // Start the child process.
+            Process p = new Process();
+            // Redirect the output stream of the child process.
+            string cmdString = height.ToString();
+
+
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.FileName = "java";
+            p.StartInfo.Arguments = $"-jar {jarPath}smartpool.jar -c={jarPath}sp_config.json -chcl {cmdString}";
+
+            logger.Info(() => $"Command being run: java {p.StartInfo.Arguments}");
+
+            p.Start();
+
+            await p.WaitForExitAsync(ct);
+            if(p.ExitCode == 0)
+            {
+                logger.Info(() => $"Found confirmed tx! Changing last 5 blocks to have paid status!");
                 foreach(Block block in blocks)
                 {
                     block.Status = BlockStatus.Paid;
@@ -392,6 +435,7 @@ namespace Miningcore.Payments
                 logger.Warn(() => $"Payouts for block(s) {cmdString} could not be sent to SmartPool members!");
                 logger.Warn(() => $"SmartPoolApp exited with code {p.ExitCode}");
             }
+            return p.ExitCode;
         }
 
         protected override async Task ExecuteAsync(CancellationToken ct)

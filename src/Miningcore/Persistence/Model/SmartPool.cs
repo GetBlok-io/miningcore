@@ -15,5 +15,7 @@ namespace Miningcore.Persistence.Model
         public string[] Operators { get; set; }
         public string SmartPoolNFT { get; set; }
         public DateTime Created { get; set; }
+
+        public ulong[] blocks { get; set; }
     }
 }

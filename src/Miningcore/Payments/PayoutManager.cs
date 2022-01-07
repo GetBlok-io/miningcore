@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Data;
 using System.Linq;
 using System.Net.Http;
 using System.Reactive.Concurrency;
@@ -24,6 +25,7 @@ using Miningcore.Persistence.Repositories;
 using NLog;
 using Org.BouncyCastle.Utilities.Net;
 using Contract = Miningcore.Contracts.Contract;
+using AutoMapper;
 
 namespace Miningcore.Payments
 {
@@ -34,7 +36,7 @@ namespace Miningcore.Payments
     {
         private ISmartPoolRepository smartpoolRepo;
         private IConsensusRepository consensusRepo;
-
+        private IMapper mapper;
         public PayoutManager(IComponentContext ctx,
             IConnectionFactory cf,
             IBlockRepository blockRepo,
@@ -59,6 +61,7 @@ namespace Miningcore.Payments
             this.clusterConfig = clusterConfig;
             smartpoolRepo = ctx.Resolve<ISmartPoolRepository>();
             consensusRepo = ctx.Resolve<IConsensusRepository>();
+            mapper = ctx.Resolve<IMapper>();
             interval = TimeSpan.FromSeconds(clusterConfig.PaymentProcessing.Interval > 0 ?
                 clusterConfig.PaymentProcessing.Interval : 600);
         }
@@ -241,21 +244,26 @@ namespace Miningcore.Payments
                 return;
             }
             var smartpool = (await cf.Run(con => smartpoolRepo.GetLastSmartPoolEntryAsync(con, config.Id)));
-
+            var smartPoolObj = mapper.Map<Persistence.Postgres.Entities.SmartPool>(smartpool);
+            
             // get first 5 confirmed blocks and pay them out
             var confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPayoutAsync(con, config.Id));
+
+            var blocksToCheck = (await cf.Run(con => blockRepo.GetBlocksByHeight(con, config.Id, smartPoolObj.blocks, BlockStatus.Confirmed)));
+
+
             var exitCode = -1;
             await cf.RunTx(async (con, tx) =>
             {
-                // We distribute payouts for each confirmed block.
-                exitCode = await CheckLastPayments(smartPoolJarPath, smartpool.Height, confirmedBlocks, ct);
-                foreach(Block block in confirmedBlocks)
+                // We check each block from last smart pool entry that is still confirmed.
+                exitCode = await CheckLastPayments(smartPoolJarPath, smartpool.Height, blocksToCheck, ct);
+                foreach(Block block in blocksToCheck)
                 {
                     await blockRepo.UpdateBlockAsync(con, tx, block);
                 }
             });
-
-            if(exitCode == 0)
+            // If exit code is 0 or no blocks that are still confirmed, get next 1-5 confirmed blocks and pay them out
+            if(exitCode == 0 || blocksToCheck.Length == 0)
             {
                 confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPayoutAsync(con, config.Id));
             }

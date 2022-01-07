@@ -14,5 +14,6 @@ namespace Miningcore.Api.Responses
         public ulong MinPayout { get; set; }
         public ulong StoredPayout { get; set; }
         public DateTime Created { get; set; }
+        public ulong ValuePaid { get; set; }
     }
 }

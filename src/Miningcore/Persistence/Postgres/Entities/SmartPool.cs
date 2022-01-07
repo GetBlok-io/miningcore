@@ -15,5 +15,6 @@ namespace Miningcore.Persistence.Postgres.Entities
         public string[] Operators { get; set; }
         public string SmartPoolNFT { get; set; }
         public DateTime Created { get; set; }
+        public long[] blocks { get; set; }
     }
 }

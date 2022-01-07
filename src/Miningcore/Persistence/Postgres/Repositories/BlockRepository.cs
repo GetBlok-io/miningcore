@@ -86,6 +86,18 @@ namespace Miningcore.Persistence.Postgres.Repositories
             .ToArray();
         }
 
+        public async Task<Block[]> GetBlocksByHeight(IDbConnection con, string poolid, long[] heights, BlockStatus status)
+        {
+            const string query = "SELECT * FROM blocks WHERE poolid = @poolid AND blockheight IN @heights AND status = @status";
+
+            return (await con.QueryAsync<Entities.Block>(query, new
+            {
+                poolid, heights, status
+            }))
+            .Select(mapper.Map<Block>)
+            .ToArray();
+        }
+
         public async Task<Block[]> GetPendingBlocksForPoolAsync(IDbConnection con, string poolId)
         {
             logger.LogInvoke(new object[] { poolId });

@@ -106,6 +106,8 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 }
             }
             query += ")";
+
+            logger.Info(() => "Query being run: " + query);
             return (await con.QueryAsync<Entities.Block>(query, new
             {
                 poolid,

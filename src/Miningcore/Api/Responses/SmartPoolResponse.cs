@@ -15,6 +15,6 @@ namespace Miningcore.Api.Responses
         public string SmartPoolNFT { get; set; }
         public DateTime Created { get; set; }
 
-        public ulong[] BlocksDistributed { get; set; }
+        public ulong[] Blocks { get; set; }
     }
 }

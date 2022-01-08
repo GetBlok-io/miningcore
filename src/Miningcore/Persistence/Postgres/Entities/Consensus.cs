@@ -15,6 +15,6 @@ namespace Miningcore.Persistence.Postgres.Entities
         public long MinPayout { get; set; }
         public long StoredPayout { get; set; }
         public DateTime Created { get; set; }
-        public long ValuePaid { get; set; }
+        public long Paid { get; set; }
     }
 }

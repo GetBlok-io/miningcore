@@ -245,19 +245,20 @@ namespace Miningcore.Payments
                 return;
             }
             var smartpool = (await cf.Run(con => smartpoolRepo.GetLastSmartPoolEntryAsync(con, config.Id)));
-
+            
             if(smartpool != null) {
+                var smartPoolObj = mapper.Map<Persistence.Postgres.Entities.SmartPool>(smartpool);
                 // get first 5 confirmed blocks and pay them out
                 var confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPayoutAsync(con, config.Id));
 
-                var blocksToCheck = (await cf.Run(con => blockRepo.GetBlocksByHeight(con, config.Id, smartpool.Blocks, BlockStatus.Confirmed)));
+                var blocksToCheck = (await cf.Run(con => blockRepo.GetBlocksByHeight(con, config.Id, smartPoolObj.Blocks, BlockStatus.Confirmed)));
 
 
                 var exitCode = -1;
                 await cf.RunTx(async (con, tx) =>
                 {
                 // We check each block from last smart pool entry that is still confirmed.
-                exitCode = await CheckLastPayments(smartPoolJarPath, smartpool.Height, blocksToCheck, ct);
+                exitCode = await CheckLastPayments(smartPoolJarPath, smartPoolObj.Height, blocksToCheck, ct);
                     foreach(Block block in blocksToCheck)
                     {
                         await blockRepo.UpdateBlockAsync(con, tx, block);
@@ -430,7 +431,7 @@ namespace Miningcore.Payments
             }
         }
 
-        private async Task<int> CheckLastPayments(String jarPath, ulong height, Block[] blocks, CancellationToken ct)
+        private async Task<int> CheckLastPayments(String jarPath, long height, Block[] blocks, CancellationToken ct)
         {
 
 

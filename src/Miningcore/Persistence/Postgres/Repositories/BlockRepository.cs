@@ -86,7 +86,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
             .ToArray();
         }
 
-        public async Task<Block[]> GetBlocksByHeight(IDbConnection con, string poolid, long[] heightVals, BlockStatus status)
+        public async Task<Block[]> GetBlocksByHeight(IDbConnection con, string poolid, long[] heightVals, BlockStatus blockStatus)
         {
             var query = "SELECT * FROM blocks WHERE poolid = @poolid AND status = @status AND ";
             query += "(";
@@ -112,7 +112,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
             {
                 poolid,
                
-                status
+                status = blockStatus.ToString().ToLower()
             }))
             .Select(mapper.Map<Block>)
             .ToArray();

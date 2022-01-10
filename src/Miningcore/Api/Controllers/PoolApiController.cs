@@ -315,7 +315,7 @@ namespace Miningcore.Api.Controllers
 
             var blockStates = state != null && state.Length > 0 ?
                 state :
-                new[] { BlockStatus.Confirmed, BlockStatus.Pending, BlockStatus.Orphaned };
+                new[] { BlockStatus.Confirmed, BlockStatus.Pending, BlockStatus.Orphaned , BlockStatus.Paid};
 
             var blocks = (await cf.Run(con => blocksRepo.PageBlocksAsync(con, pool.Id, blockStates, page, pageSize)))
                 .Select(mapper.Map<Responses.Block>)
@@ -440,7 +440,7 @@ namespace Miningcore.Api.Controllers
 
             var blockStates = state != null && state.Length > 0 ?
                 state :
-                new[] { BlockStatus.Confirmed, BlockStatus.Pending, BlockStatus.Orphaned };
+                new[] { BlockStatus.Confirmed, BlockStatus.Pending, BlockStatus.Orphaned , BlockStatus.Paid};
 
             uint pageCount = (uint) Math.Floor((await cf.Run(con => blocksRepo.GetPoolBlockCountAsync(con, poolId))) / (double) pageSize);
 

@@ -204,9 +204,10 @@ namespace Miningcore.Payments
                                 if(block.Status == BlockStatus.Pending)
                                 {
                                     // Lets first update the block to have confirmation progress of 1 in the db
+                                    block.Status = BlockStatus.Confirmed;
                                     await blockRepo.UpdateBlockAsync(con, tx, block);
 
-                                    blocksToSend.Add(block);
+                                    
                                 }
                                 else
                                 {
@@ -220,14 +221,14 @@ namespace Miningcore.Payments
                         }
                     });
                 }
-                await cf.RunTx(async (con, tx) =>
+                /*await cf.RunTx(async (con, tx) =>
                 {
-                    await SendPayoutToHolding(smartPoolJarPath, blocksToSend.ToArray(), ct);
+                    await DistributePayouts(smartPoolJarPath, blocksToSend.ToArray(), ct);
                     foreach(Block block in blocksToSend.ToArray())
                     {
                         await blockRepo.UpdateBlockAsync(con, tx, block);
                     }
-                });
+                });*/
             }
             else
                 logger.Info(() => $"No updated blocks for pool {config.Id}");
@@ -248,7 +249,7 @@ namespace Miningcore.Payments
             
             if(smartpool != null) {
                 var smartPoolObj = mapper.Map<Persistence.Postgres.Entities.SmartPool>(smartpool);
-                // get first 5 confirmed blocks and pay them out
+                // get first 1 confirmed blocks and pay them out
                 var confirmedBlocks = await cf.Run(con => blockRepo.GetConfirmedBlocksForPayoutAsync(con, config.Id));
 
                 var blocksToCheck = (await cf.Run(con => blockRepo.GetBlocksByHeight(con, config.Id, smartPoolObj.Blocks, BlockStatus.Confirmed)));

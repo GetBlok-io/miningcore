@@ -16,6 +16,6 @@ namespace Miningcore.Api.Responses
         public DateTime Created { get; set; }
 
         public ulong[] Blocks { get; set; }
-        public string SubpoolId { get; set; }
+        public string Subpool_Id { get; set; }
     }
 }

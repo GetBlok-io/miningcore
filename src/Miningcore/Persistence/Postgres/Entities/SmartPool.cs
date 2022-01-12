@@ -17,6 +17,6 @@ namespace Miningcore.Persistence.Postgres.Entities
         public DateTime Created { get; set; }
         public long[] Blocks { get; set; }
 
-        public string SubpoolId { get; set; }
+        public string Subpool_Id { get; set; }
     }
 }

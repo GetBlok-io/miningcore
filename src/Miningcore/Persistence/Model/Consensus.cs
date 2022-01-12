@@ -16,6 +16,6 @@ namespace Miningcore.Persistence.Model
         public ulong StoredPayout { get; set; }
         public DateTime Created { get; set; }
         public ulong Paid { get; set; }
-        public string SubpoolId { get; set; }
+        public string Subpool_Id { get; set; }
     }
 }

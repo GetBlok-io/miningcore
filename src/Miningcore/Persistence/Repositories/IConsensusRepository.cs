@@ -17,6 +17,6 @@ namespace Miningcore.Persistence.Repositories
 
         Task<Consensus[]> GetConsensusEntriesByMinerAndEpochAsync(IDbConnection con, string poolId, long epoch, string miner);
         Task<Consensus[]> GetConsensusEntriesByMinerAndHeightAsync(IDbConnection con, string poolId, long height, string miner);
-
+        Task<Consensus[]> GetConsensusEntriesBySubpoolAndEpochAsync(IDbConnection con, string poolId, string subpoolId, long epoch);
     }
 }

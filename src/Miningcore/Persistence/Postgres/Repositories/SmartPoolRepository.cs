@@ -60,6 +60,26 @@ namespace Miningcore.Persistence.Postgres.Repositories
               .Select(mapper.Map<SmartPool>)
               .FirstOrDefault();
         }
+        public async Task<SmartPool> GetSmartPoolEntryByEpochAndSubpoolAsync(IDbConnection con, string poolId, long epoch, string subpoolId)
+        {
+            logger.LogInvoke(new object[] { poolId });
+
+            var query = $"SELECT * FROM smartpool_data WHERE poolid = @poolId AND epoch = @epoch AND subpool_id = @subpoolId";
+
+            return (await con.QueryAsync<Entities.SmartPool>(query, new { poolId, epoch, subpoolId }))
+              .Select(mapper.Map<SmartPool>)
+              .FirstOrDefault();
+        }
+        public async Task<SmartPool> GetLastSmartPoolEntryBySubpoolAsync(IDbConnection con, string poolId, string subpoolId)
+        {
+            logger.LogInvoke(new object[] { poolId });
+
+            var query = $"SELECT * FROM smartpool_data WHERE poolid = @poolId AND subpool_id = @subpoolId ORDER BY created DESC FETCH NEXT 1 ROW ONLY";
+
+            return (await con.QueryAsync<Entities.SmartPool>(query, new { poolId, subpoolId }))
+              .Select(mapper.Map<SmartPool>)
+              .FirstOrDefault();
+        }
 
         public async Task<SmartPool> GetLastSmartPoolEntryAsync(IDbConnection con, string poolId)
         {

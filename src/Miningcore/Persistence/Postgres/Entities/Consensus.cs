@@ -16,5 +16,6 @@ namespace Miningcore.Persistence.Postgres.Entities
         public long StoredPayout { get; set; }
         public DateTime Created { get; set; }
         public long Paid { get; set; }
+        public string SubpoolId { get; set; }
     }
 }

@@ -347,24 +347,18 @@ namespace Miningcore.Api.Controllers
 
         [HttpGet("/api/pools/{poolId}/smartpool")]
         public async Task<Responses.SmartPoolResponse> GetCurrentSmartPoolAsync(
-            string poolId, [FromQuery] int epoch = 0, [FromQuery] int height = 0)
+            string poolId, [FromQuery] int epoch = 0, [FromQuery] int subpoolid = 0)
         {
             var pool = GetPool(poolId);
 
-           if(epoch == 0 && height == 0)
+           if(epoch == 0)
             {
-                var smartpool = (await cf.Run(con => smartpoolRepo.GetLastSmartPoolEntryAsync(con, poolId)));
+                var smartpool = (await cf.Run(con => smartpoolRepo.GetLastSmartPoolEntryBySubpoolAsync(con, poolId, subpoolid.ToString())));
                 var smartpoolResponse = mapper.Map<Responses.SmartPoolResponse>(smartpool);
                 return smartpoolResponse;
-            }else if(height == 0 && epoch > 0)
+            }else if(epoch > 0)
             {
-                var smartpool = (await cf.Run(con => smartpoolRepo.GetSmartPoolEntryByEpochAsync(con, poolId, epoch)));
-                var smartpoolResponse = mapper.Map<Responses.SmartPoolResponse>(smartpool);
-                return smartpoolResponse;
-            }
-            else if(epoch == 0 && height > 0)
-            {
-                var smartpool = (await cf.Run(con => smartpoolRepo.GetSmartPoolEntryByHeightAsync(con, poolId, height)));
+                var smartpool = (await cf.Run(con => smartpoolRepo.GetSmartPoolEntryByEpochAndSubpoolAsync(con, poolId, epoch, subpoolid.ToString())));
                 var smartpoolResponse = mapper.Map<Responses.SmartPoolResponse>(smartpool);
                 return smartpoolResponse;
             }
@@ -376,19 +370,19 @@ namespace Miningcore.Api.Controllers
 
         [HttpGet("/api/pools/{poolId}/smartpool/consensus")]
         public async Task<Responses.ConsensusResponse[]> GetCurrentConsensusAsync(
-    string poolId, [FromQuery] int epoch = 0, [FromQuery] int height = 0, [FromQuery] string miner = null)
+    string poolId, [FromQuery] int epoch = 0, [FromQuery] int subpoolid = 0, [FromQuery] string miner = null)
         {
             var pool = GetPool(poolId);
 
-            if(epoch == 0 && height == 0 && miner == null)
+            if(epoch == 0 && miner == null)
             {
                 return null;
             }
-            else if(height == 0 && epoch > 0)
+            else if(epoch > 0)
             {
                 if(miner == null)
                 {
-                    var consensus = (await cf.Run(con => consensusRepo.GetConsensusEntriesByEpochAsync(con, poolId, epoch)))
+                    var consensus = (await cf.Run(con => consensusRepo.GetConsensusEntriesBySubpoolAndEpochAsync(con, poolId, subpoolid.ToString(), epoch)))
                         .Select(mapper.Map<Responses.ConsensusResponse>)
                         .ToArray();
                     return consensus;
@@ -400,29 +394,6 @@ namespace Miningcore.Api.Controllers
                         .ToArray();
                     return consensus;
                 }
-            }
-            else if(epoch == 0 && height > 0)
-            {
-                if(miner == null)
-                {
-                    var consensus = (await cf.Run(con => consensusRepo.GetConsensusEntriesByHeightAsync(con, poolId, height)))
-                        .Select(mapper.Map<Responses.ConsensusResponse>)
-                        .ToArray();
-                    return consensus;
-                }
-                else
-                {
-                    var consensus = (await cf.Run(con => consensusRepo.GetConsensusEntriesByMinerAndHeightAsync(con, poolId, height, miner)))
-                        .Select(mapper.Map<Responses.ConsensusResponse>)
-                        .ToArray();
-                    return consensus;
-                }
-            }else if(epoch == 0 && height == 0 && miner != null)
-            {
-                var consensus = (await cf.Run(con => consensusRepo.GetConsensusEntriesByMinerAsync(con, poolId, miner)))
-                    .Select(mapper.Map<Responses.ConsensusResponse>)
-                    .ToArray();
-                return consensus;
             }
             else
             {

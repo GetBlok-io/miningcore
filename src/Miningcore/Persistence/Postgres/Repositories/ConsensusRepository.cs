@@ -82,6 +82,17 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 .ToArray();
         }
 
+        public async Task<Consensus[]> GetConsensusEntriesBySubpoolAndEpochAsync(IDbConnection con, string poolId, string subpoolId, long epoch)
+        {
+            logger.LogInvoke(new object[] { poolId });
+
+            var query = $"SELECT * FROM consensus WHERE poolid = @poolId AND subpool_id = @subpoolId AND epoch = @epoch";
+
+            return (await con.QueryAsync<Entities.Consensus>(query, new { poolId, subpoolId, epoch}))
+                .Select(mapper.Map<Consensus>)
+                .ToArray();
+        }
+
         public async Task<Consensus[]> GetConsensusEntriesByMinerAndHeightAsync(IDbConnection con, string poolId, long height, string miner)
         {
             logger.LogInvoke(new object[] { poolId });

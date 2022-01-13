@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -277,11 +278,7 @@ namespace Miningcore.Payments
                 }
                 else
                 {
-                    await cf.RunTx(async (con, tx) =>
-                    {
-                        // We distribute payouts for each confirmed block.
-                        await DistributePayouts(smartPoolJarPath, blocksToCheck, ct);
-                    });
+                    logger.Error(() => "There was an error in the last distribution chain!");
                 }
 
                 
@@ -427,7 +424,7 @@ namespace Miningcore.Payments
             }
             else
             {
-                logger.Warn(() => $"Payouts for block(s) {cmdString} could not be sent to SmartPool members!");
+                logger.Warn(() => $"Payouts for block(s) {cmdString} could not confirmed for SmartPool members!");
                 logger.Warn(() => $"SmartPoolApp exited with code {p.ExitCode}");
             }
         }

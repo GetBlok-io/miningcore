@@ -546,7 +546,7 @@ namespace Miningcore.Api.Controllers
                        .ToArray();
                 if(storedPayouts.Length > 0)
                 {
-                    stats.PendingBalance = storedPayouts[0].StoredPayout;
+                    stats.PendingBalance = storedPayouts[0].StoredPayout / (1000 * 1000 * 1000);
                 }
                 else
                 {

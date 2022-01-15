@@ -71,6 +71,17 @@ namespace Miningcore.Persistence.Postgres.Repositories
                 .ToArray();
         }
 
+        public async Task<Consensus[]> GetLastMinerConsensusEntry(IDbConnection con, string poolId, string miner)
+        {
+            logger.LogInvoke(new object[] { poolId });
+
+            var query = $"SELECT * FROM consensus WHERE poolid = @poolId AND miner = @miner ORDER BY epoch FETCH NEXT 1 ROW ONLY";
+
+            return (await con.QueryAsync<Entities.Consensus>(query, new { poolId, miner }))
+                .Select(mapper.Map<Consensus>)
+                .ToArray();
+        }
+
         public async Task<Consensus[]> GetConsensusEntriesByMinerAndEpochAsync(IDbConnection con, string poolId, long epoch, string miner)
         {
             logger.LogInvoke(new object[] { poolId });

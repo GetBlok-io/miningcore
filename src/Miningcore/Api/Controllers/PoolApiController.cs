@@ -528,6 +528,18 @@ namespace Miningcore.Api.Controllers
                 if(pool.Template.Name.Equals("Ergo"))
                     shareConst = 256;
                 stats.PendingShares = stats.PendingShares * shareConst;
+                var storedPayouts = (await cf.Run(con => consensusRepo.GetLastMinerConsensusEntry(con, poolId, address)))
+                       .Select(mapper.Map<Responses.ConsensusResponse>)
+                       .ToArray();
+                if(storedPayouts.Length > 0)
+                {
+                    stats.PendingBalance = storedPayouts[0].StoredPayout;
+                }
+                else
+                {
+                    stats.PendingBalance = 0;
+                }
+                
                 // optional fields
                 if(statsResult.LastPayment != null)
                 {

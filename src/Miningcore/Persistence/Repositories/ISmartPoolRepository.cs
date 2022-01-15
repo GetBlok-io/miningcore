@@ -16,6 +16,7 @@ namespace Miningcore.Persistence.Repositories
         Task<SmartPool> GetSmartPoolEntryByTxAsync(IDbConnection con, string poolId, string transactionHash);
         Task<SmartPool> GetLastSmartPoolEntryAsync(IDbConnection con, string poolId);
         Task<SmartPool> GetLastSmartPoolEntryBySubpoolAsync(IDbConnection con, string poolId, string subpoolId);
+        Task<SmartPool> GetLastSmartPoolEntryWithMinerAsync(IDbConnection con, string poolId, string miner);
 
     }
 }

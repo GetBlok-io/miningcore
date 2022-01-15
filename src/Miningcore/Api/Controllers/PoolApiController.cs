@@ -368,6 +368,19 @@ namespace Miningcore.Api.Controllers
             }
         }
 
+        [HttpGet("/api/pools/{poolId}/{address}/smartpool")]
+        public async Task<Responses.SmartPoolResponse> GetCurrentSmartPoolForMinerAsync(
+    string poolId, string address)
+        {
+            var pool = GetPool(poolId);
+
+          
+            var smartpool = (await cf.Run(con => smartpoolRepo.GetLastSmartPoolEntryWithMinerAsync(con, poolId, address)));
+            var smartpoolResponse = mapper.Map<Responses.SmartPoolResponse>(smartpool);
+            return smartpoolResponse;
+            
+        }
+
         [HttpGet("/api/pools/{poolId}/smartpool/consensus")]
         public async Task<Responses.ConsensusResponse[]> GetCurrentConsensusAsync(
     string poolId, [FromQuery] int epoch = 0, [FromQuery] int subpoolid = 0, [FromQuery] string miner = null)

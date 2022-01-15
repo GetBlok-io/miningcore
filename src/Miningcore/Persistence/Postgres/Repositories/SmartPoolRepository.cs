@@ -81,15 +81,15 @@ namespace Miningcore.Persistence.Postgres.Repositories
               .FirstOrDefault();
         }
 
-        public async Task<SmartPool> GetLastSmartPoolEntryAsync(IDbConnection con, string poolId)
+        public async Task<SmartPool> GetLastSmartPoolEntryWithMinerAsync(IDbConnection con, string poolId, string miner)
         {
             logger.LogInvoke(new object[] { poolId });
 
-            var query = $"SELECT * FROM smartpool_data WHERE poolid = @poolId ORDER BY created DESC FETCH NEXT 1 ROW ONLY";
+            var query = $"SELECT * FROM smartpool_data WHERE poolid = @poolId ORDER BY created DESC FETCH NEXT 100 ROW ONLY";
 
             return (await con.QueryAsync<Entities.SmartPool>(query, new { poolId }))
               .Select(mapper.Map<SmartPool>)
-              .FirstOrDefault();
+              .ToArray().Where(sp => sp.Members.Contains(miner)).ToArray().FirstOrDefault();
         }
     }
 }

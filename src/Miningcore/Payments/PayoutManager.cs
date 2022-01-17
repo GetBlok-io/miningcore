@@ -426,6 +426,10 @@ namespace Miningcore.Payments
             {
                 logger.Warn(() => $"Payouts for block(s) {cmdString} could not confirmed for SmartPool members!");
                 logger.Warn(() => $"SmartPoolApp exited with code {p.ExitCode}");
+                if(p.ExitCode == 209)
+                {
+                    logger.Info("SmartPoolApp exited due to not all txs being confirmed. Will re-attempt distribution during next payout manager run.");
+                }
             }
         }
 

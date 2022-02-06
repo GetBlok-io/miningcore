@@ -75,7 +75,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
         {
             logger.LogInvoke(new object[] { poolId });
 
-            var query = $"SELECT * FROM consensus WHERE poolid = @poolId AND miner = @miner ORDER BY epoch DESC FETCH NEXT 1 ROW ONLY";
+            var query = $"SELECT * FROM consensus WHERE poolid = @poolId AND miner = @miner ORDER BY created DESC FETCH NEXT 1 ROW ONLY";
 
             return (await con.QueryAsync<Entities.Consensus>(query, new { poolId, miner }))
                 .Select(mapper.Map<Consensus>)

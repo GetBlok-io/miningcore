@@ -21,6 +21,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.ActionConstraints;
 using NLog;
+using Miningcore.Blockchain.Ergo;
 
 namespace Miningcore.Api.Controllers
 {
@@ -55,7 +56,7 @@ namespace Miningcore.Api.Controllers
         private readonly IMasterClock clock;
         private readonly IActionDescriptorCollectionProvider adcp;
         private readonly ConcurrentDictionary<string, IMiningPool> pools;
-
+        private ErgoClient ergoClient;
         private static readonly NLog.ILogger logger = LogManager.GetCurrentClassLogger();
 
         #region Actions
@@ -573,6 +574,42 @@ namespace Miningcore.Api.Controllers
             }
 
             return stats;
+        }
+
+        [HttpGet("{poolId}/miners/{address}/vote")]
+        public async Task<UnsignedErgoTransaction> GetMinerVoteRequest(
+            string poolId, string address, [FromQuery(Name = "boxids")] List<String> boxids, [FromQuery] String vote)
+        {
+            const String YES_ADDRESS = "CHmVMXzkqHwjNtxezF4PEDZXvevscScy6wjnS59v535ojQkJ3RW7eHkGqC2yxJxLwpuDtugkjfeytndtgq7bXmD8neWHNG7xztGkdDUEbLMQgJNBUTCUNqBGzoBi1aWTAu7GaWziKwGNahhe2BxzELgzQuYgKseo67YrsU3Vj5hiHzwQCiGoLPDk9rQAYSkeGKTagRLjNFPwDxevRXv3Li42JaMc8";
+
+            const String NO_ADDRESS = "CHmVMXzkqHwjNtxezF4PEDZXvevscScy6wjnS59v535ojQkJ3RW7eHkGqC2yxJxLwpuDtugkjfeytndtgq7bXmD8neWHNG7xztGkdDUEbLMQgJNBUTCUNqBGzoBi1aWTAu7GaWziKwGNahhe2BxzELgzQuYgKseo67YrsU3Vj5hiHzwQCiGoLPDk9rQAYSkeGKTagRLjNFPwDxevRXv3LiYsidCfX";
+            var pool = GetPool(poolId);
+
+            if(string.IsNullOrEmpty(address))
+                throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
+
+            if(pool.Template.Family == CoinFamily.Ethereum)
+                address = address.ToLower();
+
+            var statsResult = await cf.RunTx((con, tx) =>
+                statsRepo.GetMinerStatsAsync(con, tx, pool.Id, address), true, IsolationLevel.Serializable);
+            ergoClient = ErgoClientFactory.CreateClient(pool, clusterConfig, logger);
+            var req = new Blockchain.Ergo.Requests();
+
+            var assets = new Asset();
+            assets.TokenId = "4f5c05967a2a68d5fe0cdd7a688289f5b1a8aef7d24cab71c20ab8896068e0a8";
+            assets.Amount = 1000L;
+            req.Address = vote == "yes" ? YES_ADDRESS : NO_ADDRESS;
+            req.Assets.Add(assets);
+            req.Value = 10000000L;
+            
+            var reqBody = new RequestsHolder();
+            reqBody.Requests.Add(req);
+            reqBody.Fee = (1000 * 1000L);
+            boxids.ForEach(b => reqBody.InputsRaw.Add(b));
+
+            var unsignedErgoTransaction = await cf.Run((c) => ergoClient.WalletUnsignedTransactionGenerateAsync(reqBody));
+            return unsignedErgoTransaction;
         }
 
         [HttpGet("{poolId}/miners/{address}/payments")]

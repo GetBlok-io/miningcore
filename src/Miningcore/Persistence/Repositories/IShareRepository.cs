@@ -25,6 +25,7 @@ namespace Miningcore.Persistence.Repositories
         Task<long> CountSharesBetweenCreatedAsync(IDbConnection con, string poolId, string miner, DateTime? start, DateTime? end);
         Task<long> CountAllSharesBetweenCreatedAsync(IDbConnection con, string poolId, DateTime? start, DateTime? end);
         Task<double?> GetAccumulatedShareDifficultyBetweenCreatedAsync(IDbConnection con, string poolId, DateTime start, DateTime end);
+        Task<double?> GetShareDiffBetweenCreatedByMinerWorkerAsync(IDbConnection con, string poolId, DateTime start, DateTime end, string miner, string worker);
         Task<double?> GetEffortBetweenCreatedAsync(IDbConnection con, string poolId, double shareConst, DateTime start, DateTime end);
         Task<double?> GetTotalShareDiffBetweenCreatedAsync(IDbConnection con, string poolId, double shareConst, DateTime start, DateTime end);
         Task<MinerWorkerHashes[]> GetAccumulatedShareDifficultyTotalAsync(IDbConnection con, string poolId);

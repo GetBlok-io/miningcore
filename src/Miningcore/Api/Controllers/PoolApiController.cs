@@ -542,6 +542,53 @@ namespace Miningcore.Api.Controllers
                 if(pool.Template.Name.Equals("Ergo"))
                     shareConst = 256;
                 stats.PendingShares = stats.PendingShares * shareConst;
+
+                foreach(var worker in stats.Performance.Workers)
+                {
+                    var end = clock.Now;
+                    DateTime start;
+
+                    switch(perfMode)
+                    {
+                        case SampleRange.Hour:
+                            end = end.AddSeconds(-end.Second);
+
+                            start = end.AddHours(-1);
+
+                            worker.Value.currentShares = (await cf.Run(con =>
+                shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).Value;
+                            break;
+
+                        case SampleRange.Day:
+                            // set range
+                            if(end.Minute < 30)
+                                end = end.AddHours(-1);
+
+                            end = end.AddMinutes(-end.Minute);
+                            end = end.AddSeconds(-end.Second);
+
+                            start = end.AddDays(-1);
+
+                            worker.Value.currentShares = (await cf.Run(con =>
+                shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).Value;
+                            break;
+
+                        case SampleRange.Month:
+                            if(end.Hour < 12)
+                                end = end.AddDays(-1);
+
+                            end = end.Date;
+
+                            // set range
+                            start = end.AddMonths(-1);
+
+                            worker.Value.currentShares = (await cf.Run(con =>
+                shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).Value;
+                            break;
+                    }
+                    
+                }
+
                 var storedPayouts = (await cf.Run(con => consensusRepo.GetLastMinerConsensusEntry(con, poolId, address)))
                        .Select(mapper.Map<Responses.ConsensusResponse>)
                        .ToArray();
@@ -575,42 +622,7 @@ namespace Miningcore.Api.Controllers
 
             return stats;
         }
-
-        [HttpGet("{poolId}/miners/{address}/vote")]
-        public async Task<UnsignedErgoTransaction> GetMinerVoteRequest(
-            string poolId, string address, [FromQuery(Name = "boxids")] List<String> boxids, [FromQuery] String vote)
-        {
-            const String YES_ADDRESS = "CHmVMXzkqHwjNtxezF4PEDZXvevscScy6wjnS59v535ojQkJ3RW7eHkGqC2yxJxLwpuDtugkjfeytndtgq7bXmD8neWHNG7xztGkdDUEbLMQgJNBUTCUNqBGzoBi1aWTAu7GaWziKwGNahhe2BxzELgzQuYgKseo67YrsU3Vj5hiHzwQCiGoLPDk9rQAYSkeGKTagRLjNFPwDxevRXv3Li42JaMc8";
-
-            const String NO_ADDRESS = "CHmVMXzkqHwjNtxezF4PEDZXvevscScy6wjnS59v535ojQkJ3RW7eHkGqC2yxJxLwpuDtugkjfeytndtgq7bXmD8neWHNG7xztGkdDUEbLMQgJNBUTCUNqBGzoBi1aWTAu7GaWziKwGNahhe2BxzELgzQuYgKseo67YrsU3Vj5hiHzwQCiGoLPDk9rQAYSkeGKTagRLjNFPwDxevRXv3LiYsidCfX";
-            var pool = GetPool(poolId);
-
-            if(string.IsNullOrEmpty(address))
-                throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
-
-            if(pool.Template.Family == CoinFamily.Ethereum)
-                address = address.ToLower();
-
-            var statsResult = await cf.RunTx((con, tx) =>
-                statsRepo.GetMinerStatsAsync(con, tx, pool.Id, address), true, IsolationLevel.Serializable);
-            ergoClient = ErgoClientFactory.CreateClient(pool, clusterConfig, logger);
-            var req = new Blockchain.Ergo.Requests();
-
-            var assets = new Asset();
-            assets.TokenId = "4f5c05967a2a68d5fe0cdd7a688289f5b1a8aef7d24cab71c20ab8896068e0a8";
-            assets.Amount = 1000L;
-            req.Address = vote == "yes" ? YES_ADDRESS : NO_ADDRESS;
-            req.Assets.Add(assets);
-            req.Value = 10000000L;
-            
-            var reqBody = new RequestsHolder();
-            reqBody.Requests.Add(req);
-            reqBody.Fee = (1000 * 1000L);
-            boxids.ForEach(b => reqBody.InputsRaw.Add(b));
-
-            var unsignedErgoTransaction = await cf.Run((c) => ergoClient.WalletUnsignedTransactionGenerateAsync(reqBody));
-            return unsignedErgoTransaction;
-        }
+ 
 
         [HttpGet("{poolId}/miners/{address}/payments")]
         public async Task<Responses.Payment[]> PageMinerPaymentsAsync(

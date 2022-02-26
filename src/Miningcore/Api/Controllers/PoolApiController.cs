@@ -554,9 +554,8 @@ namespace Miningcore.Api.Controllers
                             end = end.AddSeconds(-end.Second);
 
                             start = end.AddHours(-1);
-
                             worker.Value.currentShares = (await cf.Run(con =>
-                shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).Value;
+shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).Value;
                             break;
 
                         case SampleRange.Day:
@@ -568,9 +567,8 @@ namespace Miningcore.Api.Controllers
                             end = end.AddSeconds(-end.Second);
 
                             start = end.AddDays(-1);
-
                             worker.Value.currentShares = (await cf.Run(con =>
-                shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).Value;
+shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).Value;
                             break;
 
                         case SampleRange.Month:
@@ -583,10 +581,22 @@ namespace Miningcore.Api.Controllers
                             start = end.AddMonths(-1);
 
                             worker.Value.currentShares = (await cf.Run(con =>
-                shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).Value;
+shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).Value;
+                            break;
+                        default:
+                            if(end.Minute < 30)
+                                end = end.AddHours(-1);
+
+                            end = end.AddMinutes(-end.Minute);
+                            end = end.AddSeconds(-end.Second);
+
+                            start = end.AddDays(-1);
+                            worker.Value.currentShares = (await cf.Run(con =>
+shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).Value;
                             break;
                     }
                     
+
                 }
 
                 var storedPayouts = (await cf.Run(con => consensusRepo.GetLastMinerConsensusEntry(con, poolId, address)))

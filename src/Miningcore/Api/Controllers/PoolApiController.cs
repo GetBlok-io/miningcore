@@ -555,7 +555,7 @@ namespace Miningcore.Api.Controllers
 
                             start = end.AddHours(-1);
                             worker.Value.currentShares = (await cf.Run(con =>
-shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0);
+shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
 
                         case SampleRange.Day:
@@ -568,7 +568,7 @@ shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end,
 
                             start = end.AddDays(-1);
                             worker.Value.currentShares = (await cf.Run(con =>
-shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0);
+shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
 
                         case SampleRange.Month:
@@ -581,7 +581,7 @@ shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end,
                             start = end.AddMonths(-1);
 
                             worker.Value.currentShares = (await cf.Run(con =>
-shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0);
+shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
                         default:
                             if(end.Minute < 30)
@@ -592,7 +592,7 @@ shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end,
 
                             start = end.AddDays(-1);
                             worker.Value.currentShares = (await cf.Run(con =>
-shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0);
+shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
                     }
                     

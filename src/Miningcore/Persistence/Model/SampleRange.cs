@@ -9,5 +9,6 @@ namespace Miningcore.Persistence.Repositories
         Day = 1,
         Month,
         Hour,
+        All
     }
 }

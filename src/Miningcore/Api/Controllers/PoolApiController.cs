@@ -520,7 +520,7 @@ namespace Miningcore.Api.Controllers
 
         [HttpGet("{poolId}/miners/{address}")]
         public async Task<Responses.MinerStats> GetMinerInfoAsync(
-            string poolId, string address, [FromQuery] SampleRange perfMode = SampleRange.Day)
+            string poolId, string address, [FromQuery] SampleRange perfMode = SampleRange.Day, [FromQuery] SampleRange shareMode = SampleRange.All)
         {
             var pool = GetPool(poolId);
 
@@ -542,19 +542,23 @@ namespace Miningcore.Api.Controllers
                 if(pool.Template.Name.Equals("Ergo"))
                     shareConst = 256;
                 stats.PendingShares = stats.PendingShares * shareConst;
+                stats.PendingShares = await GetTotalShareInternal(shareMode, pool, stats.PendingShares, address);
+
+
+
 
                 foreach(var worker in stats.Performance.Workers)
                 {
                     var end = clock.Now;
                     DateTime start;
 
-                    switch(perfMode)
+                    switch(shareMode)
                     {
                         case SampleRange.Hour:
                             end = end.AddSeconds(-end.Second);
 
                             start = end.AddHours(-1);
-                            worker.Value.currentShares = (await cf.Run(con =>
+                            worker.Value.pendingShares = (await cf.Run(con =>
 shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
 
@@ -567,7 +571,7 @@ shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end,
                             end = end.AddSeconds(-end.Second);
 
                             start = end.AddDays(-1);
-                            worker.Value.currentShares = (await cf.Run(con =>
+                            worker.Value.pendingShares = (await cf.Run(con =>
 shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
 
@@ -580,19 +584,13 @@ shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end,
                             // set range
                             start = end.AddMonths(-1);
 
-                            worker.Value.currentShares = (await cf.Run(con =>
+                            worker.Value.pendingShares = (await cf.Run(con =>
 shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
-                        default:
-                            if(end.Minute < 30)
-                                end = end.AddHours(-1);
-
-                            end = end.AddMinutes(-end.Minute);
-                            end = end.AddSeconds(-end.Second);
-
-                            start = end.AddDays(-1);
-                            worker.Value.currentShares = (await cf.Run(con =>
-shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
+                        case SampleRange.All:
+                            
+                            worker.Value.pendingShares = (await cf.Run(con =>
+shareRepo.GetShareDiffByMinerWorkerAsync(con, pool.Id, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
                     }
                     
@@ -625,6 +623,9 @@ shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end,
 
 
                 stats.PerformanceSamples = await GetMinerPerformanceInternal(perfMode, pool, address);
+                
+
+                
                 logger.Info(() => $"[API] Estimating balance for miner {address}");
                 stats.EstimatedBalance = await GetPPLNSMinerEstimatedPayment(pool.Id, address);
                 logger.Info(() => $"[API] Balance estimation complete for {address}");
@@ -921,6 +922,56 @@ shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end,
             var result = mapper.Map<Responses.WorkerPerformanceStatsContainer[]>(stats);
             return result;
         }
+
+        private async Task<double> GetTotalShareInternal(
+           SampleRange shareMode, PoolConfig pool, double initialShares, string address)
+        {
+            var shares = 0.0;
+            var end = clock.Now;
+            DateTime start;
+
+            switch(shareMode)
+            {
+                case SampleRange.Hour:
+                    end = end.AddSeconds(-end.Second);
+
+                    start = end.AddHours(-1);
+                    shares = (await cf.Run(con =>
+shareRepo.GetShareDiffByMinerBetweenCreatedAsync(con, pool.Id, address, start, end))).GetValueOrDefault(0.0) * 256;
+                    break;
+
+                case SampleRange.Day:
+                    // set range
+                    if(end.Minute < 30)
+                        end = end.AddHours(-1);
+
+                    end = end.AddMinutes(-end.Minute);
+                    end = end.AddSeconds(-end.Second);
+
+                    start = end.AddDays(-1);
+                    shares = (await cf.Run(con =>
+shareRepo.GetShareDiffByMinerBetweenCreatedAsync(con, pool.Id, address, start, end))).GetValueOrDefault(0.0) * 256;
+                    break;
+
+                case SampleRange.Month:
+                    if(end.Hour < 12)
+                        end = end.AddDays(-1);
+
+                    end = end.Date;
+
+                    // set range
+                    start = end.AddMonths(-1);
+
+                    shares = (await cf.Run(con =>
+shareRepo.GetShareDiffByMinerBetweenCreatedAsync(con, pool.Id, address, start, end))).GetValueOrDefault(0.0) * 256;
+                    break;
+                case SampleRange.All:
+                    shares = initialShares;
+                    break;
+            }
+            return shares;
+        }
+
         private async Task<decimal> GetPPLNSMinerEstimatedPayment(string poolId, string address)
         {
             var pendingBlocks = await cf.Run(con => blocksRepo.GetPendingBlocksForPoolAsync(con, poolId));

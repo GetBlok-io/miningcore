@@ -208,6 +208,22 @@ namespace Miningcore.Persistence.Postgres.Repositories
 
             return con.QuerySingleAsync<double?>(query, new { poolId, start, end, miner, worker});
         }
+        public Task<double?> GetShareDiffByMinerWorkerAsync(IDbConnection con, string poolId, string miner, string worker)
+        {
+            logger.LogInvoke(new object[] { poolId });
+
+            const string query = "SELECT SUM(difficulty) FROM shares WHERE poolid = @poolId AND miner = @miner AND worker = @worker";
+
+            return con.QuerySingleAsync<double?>(query, new { poolId, miner, worker });
+        }
+        public Task<double?> GetShareDiffByMinerBetweenCreatedAsync(IDbConnection con, string poolId, string miner, DateTime start, DateTime end)
+        {
+            logger.LogInvoke(new object[] { poolId });
+
+            const string query = "SELECT SUM(difficulty) FROM shares WHERE poolid = @poolId AND miner = @miner AND created > @start AND created < @end";
+
+            return con.QuerySingleAsync<double?>(query, new { poolId, miner, start, end});
+        }
         public Task<double?> GetEffortBetweenCreatedAsync(IDbConnection con, string poolId, double shareConst, DateTime start, DateTime end)
         {
             logger.LogInvoke(new object[] { poolId });

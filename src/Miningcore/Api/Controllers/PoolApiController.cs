@@ -89,7 +89,7 @@ namespace Miningcore.Api.Controllers
                         var poolEffort = await cf.Run(con => shareRepo.GetEffortBetweenCreatedAsync(con, config.Id, pool.ShareMultiplier, startTime, clock.Now));
                         result.RoundShares = 0;
                         result.RoundHashes = 0;
-                        result.PoolEffort = poolEffort.Value;
+                        result.PoolEffort = poolEffort.GetValueOrDefault(0.0);
                     }
                     else
                     {

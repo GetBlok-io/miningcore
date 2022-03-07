@@ -7,6 +7,6 @@ namespace Miningcore.Api.Responses
     {
         public decimal PaymentThreshold { get; set; }
 
-        public string Donation { get; set; }
+        public String Donation { get; set; }
     }
 }

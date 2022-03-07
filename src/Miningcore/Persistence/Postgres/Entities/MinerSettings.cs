@@ -9,6 +9,6 @@ namespace Miningcore.Persistence.Postgres.Entities
         public decimal PaymentThreshold { get; set; }
         public DateTime Created { get; set; }
         public DateTime Updated { get; set; }
-        public string Donation { get; set; }
+        public String Donation { get; set; }
     }
 }

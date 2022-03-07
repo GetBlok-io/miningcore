@@ -859,7 +859,7 @@ shareRepo.GetShareDiffByMinerWorkerAsync(con, pool.Id, address, worker.Key))).Ge
 
             mapped.PoolId = pool.Id;
             mapped.Address = address;
-            if(mapped.Donation == null)
+            if(string.IsNullOrEmpty(mapped.Donation))
             {
                 if(pool.PaymentProcessing != null)
                     mapped.PaymentThreshold = Math.Max(mapped.PaymentThreshold, pool.PaymentProcessing.MinimumPayment);
@@ -874,7 +874,7 @@ shareRepo.GetShareDiffByMinerWorkerAsync(con, pool.Id, address, worker.Key))).Ge
                     var result = await minerRepo.GetSettings(con, tx, mapped.PoolId, mapped.Address);
                     return mapper.Map<Responses.MinerSettings>(result);
                 });
-            }else if(mapped.PaymentThreshold <= 0)
+            }else if(mapped.PaymentThreshold <= 0.0m)
             {
                 return await cf.RunTx(async (con, tx) =>
                 {

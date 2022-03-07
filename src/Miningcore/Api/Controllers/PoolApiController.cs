@@ -194,11 +194,10 @@ namespace Miningcore.Api.Controllers
             {
                 DateTime startTime = lastBlockTime.Value;
                 logger.Info(() => "[API] Creating Pool Effort and Round Shares For API Response");
-                var totalRoundShares = await cf.Run(con => shareRepo.CountAllSharesBetweenCreatedAsync(con, pool.Id, startTime, clock.Now));
-                var totalRoundHashes = await cf.Run(con => shareRepo.GetTotalShareDiffBetweenCreatedAsync(con, pool.Id, poolInstance.ShareMultiplier, startTime, clock.Now));
+              
                 var poolEffort = await cf.Run(con => shareRepo.GetEffortBetweenCreatedAsync(con, pool.Id, poolInstance.ShareMultiplier, startTime, clock.Now));
-                response.Pool.RoundShares = totalRoundShares;
-                response.Pool.RoundHashes = totalRoundHashes.Value;
+                response.Pool.RoundShares = 0;
+                response.Pool.RoundHashes = 0;
                 response.Pool.PoolEffort = poolEffort.Value;
 
             }

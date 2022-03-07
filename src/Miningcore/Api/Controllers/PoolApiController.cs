@@ -86,11 +86,9 @@ namespace Miningcore.Api.Controllers
                     if(lastBlockTime.HasValue) {
                         DateTime startTime = lastBlockTime.Value;
                         logger.Info(() => "[API] Creating Pool Effort and Round Shares For API Response");
-                        var totalRoundShares = await cf.Run(con => shareRepo.CountAllSharesBetweenCreatedAsync(con, config.Id, startTime, clock.Now));
-                        var totalRoundHashes = await cf.Run(con => shareRepo.GetTotalShareDiffBetweenCreatedAsync(con, config.Id, pool.ShareMultiplier, startTime, clock.Now));
                         var poolEffort = await cf.Run(con => shareRepo.GetEffortBetweenCreatedAsync(con, config.Id, pool.ShareMultiplier, startTime, clock.Now));
-                        result.RoundShares = totalRoundShares;
-                        result.RoundHashes = totalRoundHashes.Value;
+                        result.RoundShares = 0;
+                        result.RoundHashes = 0;
                         result.PoolEffort = poolEffort.Value;
                     }
                     else
@@ -540,7 +538,7 @@ namespace Miningcore.Api.Controllers
                 int shareConst = 1;
                 if(pool.Template.Name.Equals("Ergo"))
                     shareConst = 256;
-                stats.PendingShares = stats.PendingShares * shareConst;
+                stats.PendingShares *= shareConst;
                 stats.PendingShares = await GetTotalShareInternal(shareMode, pool, stats.PendingShares, address);
 
 
@@ -550,14 +548,14 @@ namespace Miningcore.Api.Controllers
                 {
                     var end = clock.Now;
                     DateTime start;
-
+                    
                     switch(shareMode)
                     {
                         case SampleRange.Hour:
                             end = end.AddSeconds(-end.Second);
 
                             start = end.AddHours(-1);
-                            worker.Value.pendingShares = (await cf.Run(con =>
+                            worker.Value.PendingShares = (await cf.Run(con =>
 shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
 
@@ -570,7 +568,7 @@ shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end,
                             end = end.AddSeconds(-end.Second);
 
                             start = end.AddDays(-1);
-                            worker.Value.pendingShares = (await cf.Run(con =>
+                            worker.Value.PendingShares = (await cf.Run(con =>
 shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
 
@@ -583,12 +581,12 @@ shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end,
                             // set range
                             start = end.AddMonths(-1);
 
-                            worker.Value.pendingShares = (await cf.Run(con =>
+                            worker.Value.PendingShares = (await cf.Run(con =>
 shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
                         case SampleRange.All:
                             
-                            worker.Value.pendingShares = (await cf.Run(con =>
+                            worker.Value.PendingShares = (await cf.Run(con =>
 shareRepo.GetShareDiffByMinerWorkerAsync(con, pool.Id, address, worker.Key))).GetValueOrDefault(0.0) * 256;
                             break;
                     }
@@ -919,6 +917,7 @@ shareRepo.GetShareDiffByMinerWorkerAsync(con, pool.Id, address, worker.Key))).Ge
                     start = end.AddHours(-1);
 
                     stats = await cf.Run(con => statsRepo.GetMinerPerformanceBetweenThreeMinutelyAsync(con, pool.Id, address, start, end));
+
                     break;
 
                 case SampleRange.Day:
@@ -932,6 +931,7 @@ shareRepo.GetShareDiffByMinerWorkerAsync(con, pool.Id, address, worker.Key))).Ge
                     start = end.AddDays(-1);
 
                     stats = await cf.Run(con => statsRepo.GetMinerPerformanceBetweenHourlyAsync(con, pool.Id, address, start, end));
+                    
                     break;
 
                 case SampleRange.Month:
@@ -949,6 +949,13 @@ shareRepo.GetShareDiffByMinerWorkerAsync(con, pool.Id, address, worker.Key))).Ge
 
             // map
             var result = mapper.Map<Responses.WorkerPerformanceStatsContainer[]>(stats);
+            foreach(var sample in result)
+            {
+                foreach(var worker in sample.Workers)
+                {
+                    worker.Value.PendingShares = 0;
+                }
+            }
             return result;
         }
 

@@ -883,6 +883,9 @@ shareRepo.GetShareDiffByMinerWorkerAsync(con, pool.Id, address, worker.Key))).Ge
                         mapped.PaymentThreshold = pool.PaymentProcessing.MinimumPayment;
                         await minerRepo.UpdatePaymentSettings(con, tx, mapped);
                     }
+                    else {
+                        mapped.PaymentThreshold = currentSettings.PaymentThreshold;
+                    }
 
                     await minerRepo.UpdateDonationSettings(con, tx, mapped);
 

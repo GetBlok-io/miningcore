@@ -30,12 +30,23 @@ namespace Miningcore.Persistence.Postgres.Repositories
             return mapper.Map<MinerSettings>(entity);
         }
 
-        public Task UpdateSettings(IDbConnection con, IDbTransaction tx, MinerSettings settings)
+        public Task UpdatePaymentSettings(IDbConnection con, IDbTransaction tx, MinerSettings settings)
         {
             const string query = "INSERT INTO miner_settings(poolid, address, paymentthreshold, created, updated) " +
                                  "VALUES(@poolid, @address, @paymentthreshold, now(), now()) " +
                                  "ON CONFLICT ON CONSTRAINT miner_settings_pkey DO UPDATE " +
                                  "SET paymentthreshold = @paymentthreshold, updated = now() " +
+                                 "WHERE miner_settings.poolid = @poolid AND miner_settings.address = @address";
+
+            return con.ExecuteAsync(query, settings, tx);
+        }
+
+        public Task UpdateDonationSettings(IDbConnection con, IDbTransaction tx, MinerSettings settings)
+        {
+            const string query = "INSERT INTO miner_settings(poolid, address, created, updated, donation) " +
+                                 "VALUES(@poolid, @address, now(), now(), @donation) " +
+                                 "ON CONFLICT ON CONSTRAINT miner_settings_pkey DO UPDATE " +
+                                 "SET updated = now(), donation = @donation " +
                                  "WHERE miner_settings.poolid = @poolid AND miner_settings.address = @address";
 
             return con.ExecuteAsync(query, settings, tx);

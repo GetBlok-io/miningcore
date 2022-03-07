@@ -855,22 +855,49 @@ shareRepo.GetShareDiffByMinerWorkerAsync(con, pool.Id, address, worker.Key))).Ge
             var mapped = mapper.Map<Persistence.Model.MinerSettings>(request.Settings);
 
             // clamp limit
-            if(pool.PaymentProcessing != null)
-                mapped.PaymentThreshold = Math.Max(mapped.PaymentThreshold, pool.PaymentProcessing.MinimumPayment);
+            
 
             mapped.PoolId = pool.Id;
             mapped.Address = address;
-
-            // finally update the settings
-            return await cf.RunTx(async (con, tx) =>
+            if(mapped.Donation == null)
             {
-                await minerRepo.UpdateSettings(con, tx, mapped);
+                if(pool.PaymentProcessing != null)
+                    mapped.PaymentThreshold = Math.Max(mapped.PaymentThreshold, pool.PaymentProcessing.MinimumPayment);
 
-                logger.Info(()=> $"Updated settings for pool {pool.Id}, miner {address}");
+                // finally update the settings
+                return await cf.RunTx(async (con, tx) =>
+                {
+                    await minerRepo.UpdatePaymentSettings(con, tx, mapped);
 
-                var result = await minerRepo.GetSettings(con, tx, mapped.PoolId, mapped.Address);
-                return mapper.Map<Responses.MinerSettings>(result);
-            });
+                    logger.Info(() => $"Updated settings for pool {pool.Id}, miner {address}");
+
+                    var result = await minerRepo.GetSettings(con, tx, mapped.PoolId, mapped.Address);
+                    return mapper.Map<Responses.MinerSettings>(result);
+                });
+            }else if(mapped.PaymentThreshold <= 0)
+            {
+                return await cf.RunTx(async (con, tx) =>
+                {
+                    var currentSettings = await minerRepo.GetSettings(con, tx, mapped.PoolId, mapped.Address);
+                    if(currentSettings == null)
+                    {
+                        mapped.PaymentThreshold = pool.PaymentProcessing.MinimumPayment;
+                        await minerRepo.UpdatePaymentSettings(con, tx, mapped);
+                    }
+
+                    await minerRepo.UpdateDonationSettings(con, tx, mapped);
+
+                    logger.Info(() => $"Updated settings for pool {pool.Id}, miner {address}");
+
+                    var result = await minerRepo.GetSettings(con, tx, mapped.PoolId, mapped.Address);
+                    return mapper.Map<Responses.MinerSettings>(result);
+                });
+            }
+            else
+            {
+                throw new ApiException("Invalid or missing settings", HttpStatusCode.BadRequest);
+            }
+
         }
 
         #endregion // Actions

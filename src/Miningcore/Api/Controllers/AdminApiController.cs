@@ -100,7 +100,7 @@ namespace Miningcore.Api.Controllers
 
             var result = await cf.RunTx(async (con, tx) =>
             {
-                await minerRepo.UpdateSettings(con, tx, mapped);
+                await minerRepo.UpdatePaymentSettings(con, tx, mapped);
 
                 return await minerRepo.GetSettings(con, tx, mapped.PoolId, mapped.Address);
             });

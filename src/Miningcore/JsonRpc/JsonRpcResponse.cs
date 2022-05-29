@@ -31,8 +31,10 @@ public class JsonRpcResponse<T>
 
     public JsonRpcResponse(T result, object id = null)
     {
-        Result = result;
+
         Id = id;
+        Result = result;
+
     }
 
     public JsonRpcResponse(JsonRpcError ex, object id, object result)
@@ -50,7 +52,7 @@ public class JsonRpcResponse<T>
     [JsonProperty(PropertyName = "result", NullValueHandling = NullValueHandling.Ignore)]
     public object Result { get; set; }
 
-    [JsonProperty(PropertyName = "error", NullValueHandling = NullValueHandling.Ignore)]
+    [JsonProperty(PropertyName = "error")]
     public JsonRpcError Error { get; set; }
 
     [JsonProperty(PropertyName = "id", NullValueHandling = NullValueHandling.Ignore)]

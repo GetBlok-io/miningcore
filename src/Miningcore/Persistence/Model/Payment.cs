@@ -1,15 +1,12 @@
-using System;
+namespace Miningcore.Persistence.Model;
 
-namespace Miningcore.Persistence.Model
+public record Payment
 {
-    public class Payment
-    {
-        public long Id { get; set; }
-        public string PoolId { get; set; }
-        public string Coin { get; set; }
-        public string Address { get; set; }
-        public decimal Amount { get; set; }
-        public string TransactionConfirmationData { get; set; }
-        public DateTime Created { get; set; }
-    }
+    public long Id { get; init; }
+    public string PoolId { get; init; }
+    public string Coin { get; init; }
+    public string Address { get; init; }
+    public decimal Amount { get; init; }
+    public string TransactionConfirmationData { get; init; }
+    public DateTime Created { get; init; }
 }

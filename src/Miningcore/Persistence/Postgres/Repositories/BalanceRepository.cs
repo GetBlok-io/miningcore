@@ -1,137 +1,118 @@
-using System;
 using System.Data;
-using System.Linq;
-using System.Threading.Tasks;
 using AutoMapper;
 using Dapper;
-using Miningcore.Extensions;
 using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Repositories;
-using NLog;
 
-namespace Miningcore.Persistence.Postgres.Repositories
+namespace Miningcore.Persistence.Postgres.Repositories;
+
+public class BalanceRepository : IBalanceRepository
 {
-    public class BalanceRepository : IBalanceRepository
+    public BalanceRepository(IMapper mapper)
     {
-        public BalanceRepository(IMapper mapper)
+        this.mapper = mapper;
+    }
+
+    private readonly IMapper mapper;
+
+    public async Task<int> AddAmountAsync(IDbConnection con, IDbTransaction tx, string poolId, string address, decimal amount, string usage, params string[] tags)
+    {
+        var now = DateTime.UtcNow;
+
+        // record balance change
+        var query = @"INSERT INTO balance_changes(poolid, address, amount, usage, tags, created)
+            VALUES(@poolid, @address, @amount, @usage, @tags, @created)";
+
+        var balanceChange = new Entities.BalanceChange
         {
-            this.mapper = mapper;
-        }
+            PoolId = poolId,
+            Created = now,
+            Address = address,
+            Amount = amount,
+            Usage = usage,
+            Tags = tags
+        };
 
-        private readonly IMapper mapper;
-        private static readonly ILogger logger = LogManager.GetCurrentClassLogger();
+        await con.ExecuteAsync(query, balanceChange, tx);
 
-        public async Task<int> AddAmountAsync(IDbConnection con, IDbTransaction tx, string poolId, string address, decimal amount, string usage, params string[] tags)
+        // update balance
+        query = "SELECT * FROM balances WHERE poolid = @poolId AND address = @address";
+
+        var balance = (await con.QueryAsync<Entities.Balance>(query, new { poolId, address }, tx))
+            .FirstOrDefault();
+
+        if(balance == null)
         {
-            logger.LogInvoke();
-
-            var now = DateTime.UtcNow;
-
-            // record balance change
-            var query = "INSERT INTO balance_changes(poolid, address, amount, usage, tags, created) " +
-                "VALUES(@poolid, @address, @amount, @usage, @tags, @created)";
-
-            var balanceChange = new Entities.BalanceChange
+            balance = new Entities.Balance
             {
                 PoolId = poolId,
                 Created = now,
                 Address = address,
                 Amount = amount,
-                Usage = usage,
-                Tags = tags
+                Updated = now
             };
 
-            await con.ExecuteAsync(query, balanceChange, tx);
+            query = @"INSERT INTO balances(poolid, address, amount, created, updated)
+                VALUES(@poolid, @address, @amount, @created, @updated)";
 
-            // update balance
-            query = "SELECT * FROM balances WHERE poolid = @poolId AND address = @address";
+            return await con.ExecuteAsync(query, balance, tx);
+        }
 
-            var balance = (await con.QueryAsync<Entities.Balance>(query, new { poolId, address }, tx))
-                .FirstOrDefault();
+        else
+        {
+            query = @"UPDATE balances SET amount = amount + @amount, updated = now() at time zone 'utc'
+                WHERE poolid = @poolId AND address = @address";
 
-            if(balance == null)
+            return await con.ExecuteAsync(query, new
             {
-                balance = new Entities.Balance
-                {
-                    PoolId = poolId,
-                    Created = now,
-                    Address = address,
-                    Amount = amount,
-                    Updated = now
-                };
-
-                query = "INSERT INTO balances(poolid, address, amount, created, updated) " +
-                    "VALUES(@poolid, @address, @amount, @created, @updated)";
-
-                return await con.ExecuteAsync(query, balance, tx);
-            }
-
-            else
-            {
-                query = "UPDATE balances SET amount = amount + @amount, updated = now() at time zone 'utc' " +
-                    "WHERE poolid = @poolId AND address = @address";
-
-                return await con.ExecuteAsync(query, new
-                {
-                    poolId,
-                    address,
-                    amount
-                }, tx);
-            }
+                poolId,
+                address,
+                amount
+            }, tx);
         }
+    }
 
-        public async Task<decimal> GetBalanceAsync(IDbConnection con, IDbTransaction tx, string poolId, string address)
-        {
-            logger.LogInvoke();
+    public async Task<decimal> GetBalanceAsync(IDbConnection con, IDbTransaction tx, string poolId, string address)
+    {
+        const string query = @"SELECT amount FROM balances WHERE poolid = @poolId AND address = @address";
 
-            const string query = "SELECT amount FROM balances WHERE poolid = @poolId AND address = @address";
+        return await con.QuerySingleOrDefaultAsync<decimal>(query, new { poolId, address }, tx);
+    }
 
-            return await con.QuerySingleOrDefaultAsync<decimal>(query, new { poolId, address }, tx);
-        }
+    public async Task<decimal> GetBalanceAsync(IDbConnection con, string poolId, string address)
+    {
+        const string query = @"SELECT amount FROM balances WHERE poolid = @poolId AND address = @address";
 
-        public async Task<decimal> GetBalanceAsync(IDbConnection con, string poolId, string address)
-        {
-            logger.LogInvoke();
+        return await con.QuerySingleOrDefaultAsync<decimal>(query, new { poolId, address });
+    }
 
-            const string query = "SELECT amount FROM balances WHERE poolid = @poolId AND address = @address";
+    public async Task<Balance[]> GetPoolBalancesOverThresholdAsync(IDbConnection con, string poolId, decimal minimum)
+    {
+        const string query = @"SELECT b.*
+            FROM balances b
+            LEFT JOIN miner_settings ms ON ms.poolid = b.poolid AND ms.address = b.address
+            WHERE b.poolid = @poolId AND b.amount >= COALESCE(ms.paymentthreshold, @minimum)";
 
-            return await con.QuerySingleOrDefaultAsync<decimal>(query, new { poolId, address });
-        }
+        return (await con.QueryAsync<Entities.Balance>(query, new { poolId, minimum }))
+            .Select(mapper.Map<Balance>)
+            .ToArray();
+    }
 
-        public async Task<Balance[]> GetPoolBalancesOverThresholdAsync(IDbConnection con, string poolId, decimal minimum)
-        {
-            logger.LogInvoke();
+    public Task<int> GetBalanceChangeCountByTagAsync(IDbConnection con, IDbTransaction tx, string poolId, string tag)
+    {
+        const string query = @"SELECT COUNT(*) FROM balance_changes WHERE poolid = @poolid AND @tag <@ tags";
 
-            const string query = "SELECT b.* " +
-                                 "FROM balances b " +
-                                 "LEFT JOIN miner_settings ms ON ms.poolid = b.poolid AND ms.address = b.address " +
-                                 "WHERE b.poolid = @poolId AND b.amount >= COALESCE(ms.paymentthreshold, @minimum)";
+        return con.ExecuteScalarAsync<int>(query, new { poolId, tag = new[] { tag } }, tx);
+    }
 
-            return (await con.QueryAsync<Entities.Balance>(query, new { poolId, minimum }))
-                .Select(mapper.Map<Balance>)
-                .ToArray();
-        }
+    public async Task<BalanceChange[]> GetBalanceChangesByTagAsync(IDbConnection con, IDbTransaction tx, string poolId, string tag)
+    {
+        const string query = @"SELECT * FROM balance_changes WHERE poolid = @poolid
+            AND @tag <@ tags
+            ORDER BY created DESC";
 
-        public Task<int> GetBalanceChangeCountByTagAsync(IDbConnection con, IDbTransaction tx, string poolId, string tag)
-        {
-            logger.LogInvoke(new object[] { poolId });
-
-            const string query = "SELECT COUNT(*) FROM balance_changes WHERE poolid = @poolid AND @tag <@ tags";
-
-            return con.ExecuteScalarAsync<int>(query, new { poolId, tag = new[] { tag } }, tx);
-        }
-
-        public async Task<BalanceChange[]> GetBalanceChangesByTagAsync(IDbConnection con, IDbTransaction tx, string poolId, string tag)
-        {
-            logger.LogInvoke(new object[] { poolId });
-
-            const string query = "SELECT * FROM balance_changes WHERE poolid = @poolid " +
-                                 "AND @tag <@ tags " +
-                                 "ORDER BY created DESC";
-
-            return (await con.QueryAsync<Entities.BalanceChange>(query, new { poolId, tag = new[] { tag } }, tx))
-                .Select(mapper.Map<BalanceChange>)
-                .ToArray();
-        }
+        return (await con.QueryAsync<Entities.BalanceChange>(query, new { poolId, tag = new[] { tag } }, tx))
+            .Select(mapper.Map<BalanceChange>)
+            .ToArray();
     }
 }

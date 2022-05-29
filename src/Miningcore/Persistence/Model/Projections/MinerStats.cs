@@ -1,28 +1,24 @@
-using System;
-using System.Collections.Generic;
+namespace Miningcore.Persistence.Model.Projections;
 
-namespace Miningcore.Persistence.Model.Projections
+public record WorkerPerformanceStats
 {
-    public class WorkerPerformanceStats
-    {
-        public double Hashrate { get; set; }
-        public double SharesPerSecond { get; set; }
-    }
+    public double Hashrate { get; init; }
+    public double SharesPerSecond { get; init; }
+}
 
-    public class WorkerPerformanceStatsContainer
-    {
-        public DateTime Created { get; set; }
-        public Dictionary<string, WorkerPerformanceStats> Workers { get; set; }
-    }
+public record WorkerPerformanceStatsContainer
+{
+    public DateTime Created { get; init; }
+    public Dictionary<string, WorkerPerformanceStats> Workers { get; init; }
+}
 
-    public class MinerStats
-    {
-        public double PendingShares { get; set; }
-        public decimal PendingBalance { get; set; }
-        public decimal TotalPaid { get; set; }
-        public decimal TodayPaid { get; set; }
-        public Payment LastPayment { get; set; }
-        public WorkerPerformanceStatsContainer Performance { get; set; }
-        public MinerWorkerPerformanceStats[] PerformanceStats { get; set; }
-    }
+public class MinerStats
+{
+    public double PendingShares { get; init; }
+    public decimal PendingBalance { get; init; }
+    public decimal TotalPaid { get; init; }
+    public decimal TodayPaid { get; init; }
+    public Payment LastPayment { get; set; }
+    public WorkerPerformanceStatsContainer Performance { get; set; }
+    public MinerWorkerPerformanceStats[] PerformanceStats { get; init; }
 }

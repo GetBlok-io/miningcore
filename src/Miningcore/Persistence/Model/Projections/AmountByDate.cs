@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+namespace Miningcore.Persistence.Model.Projections;
 
-namespace Miningcore.Persistence.Model.Projections
+public record AmountByDate
 {
-    public class AmountByDate
-    {
-        public decimal Amount { get; set; }
-        public DateTime Date { get; set; }
-    }
+    public decimal Amount { get; init; }
+    public DateTime Date { get; init; }
 }

@@ -1,21 +1,20 @@
-using System;
 using Miningcore.Contracts;
 using Miningcore.Native;
 
-namespace Miningcore.Crypto.Hashing.Algorithms
-{
-    public unsafe class Groestl : IHashAlgorithm
-    {
-        public void Digest(ReadOnlySpan<byte> data, Span<byte> result, params object[] extra)
-        {
-            Contract.Requires<ArgumentException>(result.Length >= 32, $"{nameof(result)} must be greater or equal 32 bytes");
+namespace Miningcore.Crypto.Hashing.Algorithms;
 
-            fixed (byte* input = data)
+[Identifier("groestl")]
+public unsafe class Groestl : IHashAlgorithm
+{
+    public void Digest(ReadOnlySpan<byte> data, Span<byte> result, params object[] extra)
+    {
+        Contract.Requires<ArgumentException>(result.Length >= 32);
+
+        fixed (byte* input = data)
+        {
+            fixed (byte* output = result)
             {
-                fixed (byte* output = result)
-                {
-                    LibMultihash.groestl(input, output, (uint) data.Length);
-                }
+                Multihash.groestl(input, output, (uint) data.Length);
             }
         }
     }

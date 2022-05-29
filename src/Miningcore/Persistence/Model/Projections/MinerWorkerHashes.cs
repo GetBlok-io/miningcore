@@ -1,21 +1,18 @@
-using System;
+namespace Miningcore.Persistence.Model.Projections;
 
-namespace Miningcore.Persistence.Model.Projections
+public record MinerWorkerHashes
 {
-    public class MinerWorkerHashes
-    {
-        public double Sum { get; set; }
-        public long Count { get; set; }
-        public string Miner { get; set; }
-        public string Worker { get; set; }
-        public DateTime FirstShare { get; set; }
-        public DateTime LastShare { get; set; }
-    }
+    public double Sum { get; init; }
+    public long Count { get; init; }
+    public string Miner { get; init; }
+    public string Worker { get; init; }
+    public DateTime FirstShare { get; init; }
+    public DateTime LastShare { get; init; }
+}
 
-    public class MinerWorkerHashrate
-    {
-        public string Miner { get; set; }
-        public string Worker { get; set; }
-        public double Hashrate { get; set; }
-    }
+public record MinerWorkerHashrate
+{
+    public string Miner { get; init; }
+    public string Worker { get; init; }
+    public double Hashrate { get; init; }
 }

@@ -1,82 +1,93 @@
-using System;
 using Miningcore.Configuration;
+using Miningcore.Nicehash.API;
 using Miningcore.Time;
 using Miningcore.VarDiff;
 
-namespace Miningcore.Mining
+namespace Miningcore.Mining;
+
+public class ShareStats
 {
-    public class ShareStats
+    public int ValidShares { get; set; }
+    public int InvalidShares { get; set; }
+}
+
+public class WorkerContextBase
+{
+    private double? pendingDifficulty;
+    private string userAgent;
+
+    public ShareStats Stats { get; set; }
+    public VarDiffContext VarDiff { get; set; }
+    public DateTime Created { get; set; }
+    public DateTime LastActivity { get; set; }
+    public bool IsAuthorized { get; set; }
+    public bool IsSubscribed { get; set; }
+
+    /// <summary>
+    /// Difficulty assigned to this worker, either static or updated through VarDiffManager
+    /// </summary>
+    public double Difficulty { get; set; }
+
+    /// <summary>
+    /// Previous difficulty assigned to this worker
+    /// </summary>
+    public double? PreviousDifficulty { get; set; }
+
+    /// <summary>
+    /// UserAgent reported by Stratum
+    /// </summary>
+    public string UserAgent
     {
-        public int ValidShares { get; set; }
-        public int InvalidShares { get; set; }
+        get => userAgent;
+        set
+        {
+            userAgent = value;
+
+            IsNicehash = userAgent?.Contains(NicehashConstants.NicehashUA, StringComparison.OrdinalIgnoreCase) == true;
+        }
     }
 
-    public class WorkerContextBase
+    public bool IsNicehash { get; private set; }
+
+    public void Init(double difficulty, VarDiffConfig varDiffConfig, IMasterClock clock)
     {
-        private double? pendingDifficulty;
+        Difficulty = difficulty;
+        LastActivity = clock.Now;
+        Created = clock.Now;
+        Stats = new ShareStats();
 
-        public ShareStats Stats { get; set; }
-        public VarDiffContext VarDiff { get; set; }
-        public DateTime LastActivity { get; set; }
-        public bool IsAuthorized { get; set; } = false;
-        public bool IsSubscribed { get; set; }
-
-        /// <summary>
-        /// Difficulty assigned to this worker, either static or updated through VarDiffManager
-        /// </summary>
-        public double Difficulty { get; set; }
-
-        /// <summary>
-        /// Previous difficulty assigned to this worker
-        /// </summary>
-        public double? PreviousDifficulty { get; set; }
-
-        /// <summary>
-        /// UserAgent reported by Stratum
-        /// </summary>
-        public string UserAgent { get; set; }
-
-        /// <summary>
-        /// True if there's a difficulty update queued for this worker
-        /// </summary>
-        public bool HasPendingDifficulty => pendingDifficulty.HasValue;
-
-        public void Init(PoolConfig poolConfig, double difficulty, VarDiffConfig varDiffConfig, IMasterClock clock)
+        if(varDiffConfig != null)
         {
-            Difficulty = difficulty;
-            LastActivity = clock.Now;
-            Stats = new ShareStats();
-
-            if(varDiffConfig != null)
-                VarDiff = new VarDiffContext { Config = varDiffConfig };
-        }
-
-        public void EnqueueNewDifficulty(double difficulty)
-        {
-            pendingDifficulty = difficulty;
-        }
-
-        public bool ApplyPendingDifficulty()
-        {
-            if(pendingDifficulty.HasValue)
+            VarDiff = new VarDiffContext
             {
-                SetDifficulty(pendingDifficulty.Value);
-                pendingDifficulty = null;
-
-                return true;
-            }
-
-            return false;
-        }
-
-        public void SetDifficulty(double difficulty)
-        {
-            PreviousDifficulty = Difficulty;
-            Difficulty = difficulty;
-        }
-
-        public void Dispose()
-        {
+                Created = Created,
+                Config = varDiffConfig
+            };
         }
     }
+
+    public void EnqueueNewDifficulty(double difficulty)
+    {
+        pendingDifficulty = difficulty;
+    }
+
+    public bool ApplyPendingDifficulty()
+    {
+        if(pendingDifficulty.HasValue)
+        {
+            SetDifficulty(pendingDifficulty.Value);
+            pendingDifficulty = null;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public void SetDifficulty(double difficulty)
+    {
+        PreviousDifficulty = Difficulty;
+        Difficulty = difficulty;
+    }
+
 }

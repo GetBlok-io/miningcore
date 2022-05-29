@@ -1,9 +1,5 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 
 namespace Miningcore.Extensions
 {
@@ -11,6 +7,9 @@ namespace Miningcore.Extensions
     {
         public static void StripValue<T>(this IDictionary<string, T> dict, string key)
         {
+            if(dict == null)
+                return;
+
             key = key.ToLower(CultureInfo.InvariantCulture);
 
             var keyActual = dict.Keys.FirstOrDefault(x => x.ToLower(CultureInfo.InvariantCulture) == key);

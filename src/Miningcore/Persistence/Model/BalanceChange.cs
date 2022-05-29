@@ -1,20 +1,17 @@
-using System;
+namespace Miningcore.Persistence.Model;
 
-namespace Miningcore.Persistence.Model
+public record BalanceChange
 {
-    public class BalanceChange
-    {
-        public long Id { get; set; }
-        public string PoolId { get; set; }
-        public string Address { get; set; }
+    public long Id { get; init; }
+    public string PoolId { get; init; }
+    public string Address { get; init; }
 
-        /// <summary>
-        /// Amount owed in pool-base-currency (ie. Bitcoin, not Satoshis)
-        /// </summary>
-        public decimal Amount { get; set; }
+    /// <summary>
+    /// Amount owed in pool-base-currency (ie. Bitcoin, not Satoshis)
+    /// </summary>
+    public decimal Amount { get; init; }
 
-        public string Usage { get; set; }
+    public string Usage { get; init; }
 
-        public DateTime Created { get; set; }
-    }
+    public DateTime Created { get; init; }
 }

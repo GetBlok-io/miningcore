@@ -1,64 +1,73 @@
-using System;
-using System.Threading.Tasks;
+namespace Miningcore.Util;
 
-namespace Miningcore.Util
+public static class ActionUtils
 {
-    public static class ActionUtils
+    public static async Task Guard(Func<Task> func, Action<Exception> errorHandler = null)
     {
-        public static async Task Guard(Func<Task> func, Action<Exception> errorHandler = null)
+        try
         {
-            try
-            {
-                await func();
-            }
-
-            catch (Exception ex)
-            {
-                errorHandler?.Invoke(ex);
-            }
+            await func();
         }
 
-        public static void Guard(Action func, Action<Exception> errorHandler = null)
+        catch (Exception ex)
         {
-            try
-            {
-                func();
-            }
+            errorHandler?.Invoke(ex);
+        }
+    }
 
-            catch (Exception ex)
-            {
-                errorHandler?.Invoke(ex);
-            }
+    public static async Task Guard(Task task, Action<Exception> errorHandler = null)
+    {
+        try
+        {
+            await task;
         }
 
-        public static async Task<T> Guard<T>(Func<Task<T>> func, Action<Exception> errorHandler = null)
+        catch (Exception ex)
         {
-            try
-            {
-                return await func();
-            }
+            errorHandler?.Invoke(ex);
+        }
+    }
 
-            catch (Exception ex)
-            {
-                errorHandler?.Invoke(ex);
-
-                return default;
-            }
+    public static void Guard(Action func, Action<Exception> errorHandler = null)
+    {
+        try
+        {
+            func();
         }
 
-        public static T Guard<T>(Func<T> func, Action<Exception> errorHandler = null)
+        catch (Exception ex)
         {
-            try
-            {
-                return func();
-            }
+            errorHandler?.Invoke(ex);
+        }
+    }
 
-            catch (Exception ex)
-            {
-                errorHandler?.Invoke(ex);
+    public static async Task<T> Guard<T>(Func<Task<T>> func, Action<Exception> errorHandler = null)
+    {
+        try
+        {
+            return await func();
+        }
 
-                return default;
-            }
+        catch (Exception ex)
+        {
+            errorHandler?.Invoke(ex);
+
+            return default;
+        }
+    }
+
+    public static T Guard<T>(Func<T> func, Action<Exception> errorHandler = null)
+    {
+        try
+        {
+            return func();
+        }
+
+        catch (Exception ex)
+        {
+            errorHandler?.Invoke(ex);
+
+            return default;
         }
     }
 }

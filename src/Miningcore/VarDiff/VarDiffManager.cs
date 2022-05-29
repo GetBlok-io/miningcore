@@ -1,105 +1,163 @@
-using System;
+using CircularBuffer;
 using Miningcore.Configuration;
+using Miningcore.Extensions;
+using Miningcore.Mining;
 using Miningcore.Time;
-using Miningcore.Util;
-using Contract = Miningcore.Contracts.Contract;
 
-namespace Miningcore.VarDiff
+namespace Miningcore.VarDiff;
+
+public static class VarDiffManager
 {
-    public class VarDiffManager
+    private const int BufferSize = 10;  // Last 10 shares should be enough
+    private const double SafetyMargin = 1;    // ensure we don't miss a cycle due a sub-second fraction delta;
+
+    public static double? Update(WorkerContextBase context, VarDiffConfig options, IMasterClock clock)
     {
-        public VarDiffManager(VarDiffConfig varDiffOptions, IMasterClock clock)
+        var ctx = context.VarDiff;
+        var difficulty = context.Difficulty;
+        var now = clock.Now;
+        var ts = now.ToUnixSeconds();
+
+        try
         {
-            options = varDiffOptions;
-            this.clock = clock;
-            bufferSize = 10; // Last 10 shares is always enough
+            Monitor.Enter(ctx);
 
-            var variance = varDiffOptions.TargetTime * (varDiffOptions.VariancePercent / 100.0);
-            tMin = varDiffOptions.TargetTime - variance;
-            tMax = varDiffOptions.TargetTime + variance;
-        }
-
-        private readonly int bufferSize;
-        private readonly VarDiffConfig options;
-        private readonly double tMax;
-        private readonly double tMin;
-        private readonly IMasterClock clock;
-
-        public double? Update(VarDiffContext ctx, double difficulty, bool isIdleUpdate)
-        {
-            Contract.RequiresNonNull(ctx, nameof(ctx));
-
-            lock(ctx)
+            if(ctx.LastTs.HasValue)
             {
-                // Get Current Time
-                var ts = DateTimeOffset.Now.ToUnixTimeMilliseconds() / 1000.0;
-
-                // For the first time, won't change diff.
-                if(!ctx.LastTs.HasValue)
-                {
-                    ctx.LastRtc = ts;
-                    ctx.LastTs = ts;
-                    ctx.TimeBuffer = new CircularDoubleBuffer(bufferSize);
-                    return null;
-                }
-
                 var minDiff = options.MinDiff;
                 var maxDiff = options.MaxDiff ?? Math.Max(minDiff, double.MaxValue); // for regtest
-                var sinceLast = ts - ctx.LastTs.Value;
+                var timeDelta = ts - ctx.LastTs.Value;
+
+                // make sure buffer exists as this point
+                ctx.TimeBuffer ??= new CircularBuffer<double>(BufferSize);
 
                 // Always calculate the time until now even there is no share submitted.
-                var timeTotal = ctx.TimeBuffer.Sum();
-                var timeCount = ctx.TimeBuffer.Size;
-                var avg = (timeTotal + sinceLast) / (timeCount + 1);
+                var timeTotal = ctx.TimeBuffer.Sum() + timeDelta;
+                var avg = timeTotal / (ctx.TimeBuffer.Size + 1);
 
                 // Once there is a share submitted, store the time into the buffer and update the last time.
-                if(!isIdleUpdate)
-                {
-                    ctx.TimeBuffer.PushBack(sinceLast);
-                    ctx.LastTs = ts;
-                }
+                ctx.TimeBuffer.PushBack(timeDelta);
+                ctx.LastTs = ts;
 
                 // Check if we need to change the difficulty
-                if(ts - ctx.LastRtc < options.RetargetTime || avg >= tMin && avg <= tMax)
+                var variance = options.TargetTime * (options.VariancePercent / 100.0);
+                var tMin = options.TargetTime - variance;
+                var tMax = options.TargetTime + variance;
+
+                if(ts - ctx.LastRetarget < options.RetargetTime || avg >= tMin && avg <= tMax)
                     return null;
 
                 // Possible New Diff
                 var newDiff = difficulty * options.TargetTime / avg;
 
-                // Max delta
-                if(options.MaxDelta.HasValue && options.MaxDelta > 0)
-                {
-                    var delta = Math.Abs(newDiff - difficulty);
-
-                    if(delta > options.MaxDelta)
-                    {
-                        if(newDiff > difficulty)
-                            newDiff -= delta - options.MaxDelta.Value;
-                        else if(newDiff < difficulty)
-                            newDiff += delta - options.MaxDelta.Value;
-                    }
-                }
-
-                // Clamp to valid range
-                if(newDiff < minDiff)
-                    newDiff = minDiff;
-                if(newDiff > maxDiff)
-                    newDiff = maxDiff;
-
-                // RTC if the Diff is changed
-                if(newDiff < difficulty || newDiff > difficulty)
-                {
-                    ctx.LastRtc = ts;
-                    ctx.LastUpdate = clock.Now;
-
-                    // Due to change of diff, Buffer needs to be cleared
-                    ctx.TimeBuffer = new CircularDoubleBuffer(bufferSize);
-
+                if(TryApplyNewDiff(ref newDiff, difficulty, minDiff, maxDiff, ts, ctx, options, clock))
                     return newDiff;
-                }
             }
 
-            return null;
+            else
+            {
+                // init
+                ctx.LastRetarget = ts;
+                ctx.LastTs = ts;
+            }
         }
+
+        finally
+        {
+            Monitor.Exit(ctx);
+        }
+
+        return null;
+    }
+
+    public static double? IdleUpdate(WorkerContextBase context, VarDiffConfig options, IMasterClock clock)
+    {
+        var ctx = context.VarDiff;
+        var difficulty = context.Difficulty;
+
+        // abort if a regular update is just happening
+        if(!Monitor.TryEnter(ctx))
+            return null;
+
+        try
+        {
+            var now = clock.Now;
+            var ts = now.ToUnixSeconds();
+            double timeDelta;
+
+            if(ctx.LastTs.HasValue)
+                timeDelta = ts - ctx.LastTs.Value;
+            else
+                timeDelta = ts - ctx.Created.ToUnixSeconds();
+
+            timeDelta += SafetyMargin;
+
+            // we only get involved if there was never an update or the last update happened longer than retargetTime ago
+            if(timeDelta < options.RetargetTime)
+                return null;
+
+            // update the last time
+            ctx.LastTs = ts;
+
+            var minDiff = options.MinDiff;
+            var maxDiff = options.MaxDiff ?? Math.Max(minDiff, double.MaxValue); // for regtest
+
+            // Always calculate the time until now even there is no share submitted.
+            var timeTotal = (ctx.TimeBuffer?.Sum() ?? 0) + (timeDelta - SafetyMargin);
+            var avg = timeTotal / ((ctx.TimeBuffer?.Size ?? 0) + 1);
+
+            // Possible New Diff
+            var newDiff = difficulty * options.TargetTime / avg;
+
+            if(TryApplyNewDiff(ref newDiff, difficulty, minDiff, maxDiff, ts, ctx, options, clock))
+                return newDiff;
+        }
+
+        finally
+        {
+            Monitor.Exit(ctx);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Assumes to be called with lock held
+    /// </summary>
+    private static bool TryApplyNewDiff(ref double newDiff, double oldDiff, double minDiff, double maxDiff, double ts,
+        VarDiffContext ctx, VarDiffConfig options, IMasterClock clock)
+    {
+        // Max delta
+        if(options.MaxDelta is > 0)
+        {
+            var delta = Math.Abs(newDiff - oldDiff);
+
+            if(delta > options.MaxDelta)
+            {
+                if(newDiff > oldDiff)
+                    newDiff -= delta - options.MaxDelta.Value;
+                else if(newDiff < oldDiff)
+                    newDiff += delta - options.MaxDelta.Value;
+            }
+        }
+
+        // Clamp to valid range
+        if(newDiff < minDiff)
+            newDiff = minDiff;
+        if(newDiff > maxDiff)
+            newDiff = maxDiff;
+
+        // RTC if the Diff is changed
+        if(!(newDiff < oldDiff) && !(newDiff > oldDiff))
+            return false;
+
+        ctx.LastRetarget = ts;
+        ctx.LastUpdate = clock.Now;
+
+        // Due to change of diff, Buffer needs to be cleared
+        if(ctx.TimeBuffer != null)
+            ctx.TimeBuffer = new CircularBuffer<double>(BufferSize);
+
+        return true;
     }
 }

@@ -87,13 +87,12 @@ public class StatsRepository : IStatsRepository
 
     public async Task<MinerStats> GetMinerStatsAsync(IDbConnection con, IDbTransaction tx, string poolId, string miner, CancellationToken ct)
     {
-        var currentTime = this.clock.Now;
         var query = @"SELECT (SELECT SUM(difficulty) FROM shares WHERE poolid = @poolId AND miner = @miner) AS pendingshares,
             (SELECT amount FROM balances WHERE poolid = @poolId AND address = @miner) AS pendingbalance,
             (SELECT SUM(amount) FROM payments WHERE poolid = @poolId and address = @miner) as totalpaid,
-            (SELECT SUM(amount) FROM payments WHERE poolid = @poolId and address = @miner and created >= date_trunc('day', @currentTime)) as todaypaid";
+            (SELECT SUM(amount) FROM payments WHERE poolid = @poolId and address = @miner and created >= date_trunc('day', now())) as todaypaid";
 
-        var result = await con.QuerySingleOrDefaultAsync<MinerStats>(new CommandDefinition(query, new { poolId, miner, currentTime }, tx, cancellationToken: ct));
+        var result = await con.QuerySingleOrDefaultAsync<MinerStats>(new CommandDefinition(query, new { poolId, miner }, tx, cancellationToken: ct));
 
         if(result != null)
         {

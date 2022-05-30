@@ -60,7 +60,20 @@ public class ShareRepository : IShareRepository
             .Select(mapper.Map<Share>)
             .ToArray();
     }
+    public Task<double?> GetShareDiffBetweenCreatedByMinerWorkerAsync(IDbConnection con, string poolId, DateTime start, DateTime end, string miner, string worker)
+    {
 
+        const string query = "SELECT SUM(difficulty) FROM shares WHERE poolid = @poolId AND created > @start AND created < @end AND miner = @miner AND worker = @worker";
+
+        return con.QuerySingleAsync<double?>(query, new { poolId, start, end, miner, worker });
+    }
+    public Task<double?> GetShareDiffByMinerWorkerAsync(IDbConnection con, string poolId, string miner, string worker)
+    {
+
+        const string query = "SELECT SUM(difficulty) FROM shares WHERE poolid = @poolId AND miner = @miner AND worker = @worker";
+
+        return con.QuerySingleAsync<double?>(query, new { poolId, miner, worker });
+    }
     public Task<long> CountSharesBeforeCreatedAsync(IDbConnection con, IDbTransaction tx, string poolId, DateTime before, CancellationToken ct)
     {
         const string query = "SELECT count(*) FROM shares WHERE poolid = @poolId AND created < @before";

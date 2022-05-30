@@ -338,7 +338,7 @@ public class PoolApiController : ApiControllerBase
 
     [HttpGet("{poolId}/miners/{address}")]
     public async Task<Responses.MinerStats> GetMinerInfoAsync(
-        string poolId, string address, [FromQuery] SampleRange perfMode = SampleRange.Day)
+        string poolId, string address, [FromQuery] SampleRange perfMode = SampleRange.Day, SampleRange shareMode = SampleRange.All)
     {
         var pool = GetPool(poolId);
         var ct = HttpContext.RequestAborted;
@@ -361,7 +361,8 @@ public class PoolApiController : ApiControllerBase
             // pre-multiply pending shares to cause less confusion with users
             if(pool.Template.Family == CoinFamily.Bitcoin)
                 stats.PendingShares *= pool.Template.As<BitcoinTemplate>().ShareMultiplier;
-
+            if(pool.Template.Family == CoinFamily.Ergo)
+                stats.PendingShares *= 256;
             // optional fields
             if(statsResult.LastPayment != null)
             {
@@ -373,7 +374,61 @@ public class PoolApiController : ApiControllerBase
                 if(!string.IsNullOrEmpty(baseUrl))
                     stats.LastPaymentLink = string.Format(baseUrl, statsResult.LastPayment.TransactionConfirmationData);
             }
+            if(stats.Performance != null)
+            {
+                if(stats.Performance.Workers != null)
+                {
+                    foreach(var worker in stats.Performance.Workers)
+                    {
+                        var end = clock.Now;
+                        DateTime start;
 
+                        switch(shareMode)
+                        {
+                            case SampleRange.Hour:
+                                end = end.AddSeconds(-end.Second);
+
+                                start = end.AddHours(-1);
+                                worker.Value.PendingShares = (await cf.Run(con =>
+    shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
+                                break;
+
+                            case SampleRange.Day:
+                                // set range
+                                if(end.Minute < 30)
+                                    end = end.AddHours(-1);
+
+                                end = end.AddMinutes(-end.Minute);
+                                end = end.AddSeconds(-end.Second);
+
+                                start = end.AddDays(-1);
+                                worker.Value.PendingShares = (await cf.Run(con =>
+    shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
+                                break;
+
+                            case SampleRange.Month:
+                                if(end.Hour < 12)
+                                    end = end.AddDays(-1);
+
+                                end = end.Date;
+
+                                // set range
+                                start = end.AddMonths(-1);
+
+                                worker.Value.PendingShares = (await cf.Run(con =>
+    shareRepo.GetShareDiffBetweenCreatedByMinerWorkerAsync(con, pool.Id, start, end, address, worker.Key))).GetValueOrDefault(0.0) * 256;
+                                break;
+                            case SampleRange.All:
+
+                                worker.Value.PendingShares = (await cf.Run(con =>
+    shareRepo.GetShareDiffByMinerWorkerAsync(con, pool.Id, address, worker.Key))).GetValueOrDefault(0.0) * 256;
+                                break;
+                        }
+
+
+                    }
+                }
+            }
             stats.PerformanceSamples = await GetMinerPerformanceInternal(perfMode, pool, address, ct);
         }
 

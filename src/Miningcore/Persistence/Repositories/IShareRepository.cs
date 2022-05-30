@@ -15,6 +15,8 @@ public interface IShareRepository
     Task<double?> GetAccumulatedShareDifficultyBetweenCreatedAsync(IDbConnection con, string poolId, DateTime start, DateTime end, CancellationToken ct);
     Task<MinerWorkerHashes[]> GetHashAccumulationBetweenCreatedAsync(IDbConnection con, string poolId, DateTime start, DateTime end, CancellationToken ct);
     Task<string[]> GetRecentyUsedIpAddressesAsync(IDbConnection con, IDbTransaction tx, string poolId, string miner, CancellationToken ct);
+    Task<double?> GetShareDiffBetweenCreatedByMinerWorkerAsync(IDbConnection con, string poolId, DateTime start, DateTime end, string miner, string worker);
+    Task<double?> GetShareDiffByMinerWorkerAsync(IDbConnection con, string poolId, string miner, string worker);
 
     Task<KeyValuePair<string, double>[]> GetAccumulatedUserAgentShareDifficultyBetweenCreatedAsync(IDbConnection con, string poolId,
         DateTime start, DateTime end, bool byVersione, CancellationToken ct);

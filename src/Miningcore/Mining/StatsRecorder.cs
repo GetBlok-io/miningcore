@@ -290,7 +290,7 @@ public class StatsRecorder : BackgroundService
     {
         logger.Info(() => "Performing Stats GC");
 
-        await cf.Run(async con =>
+       /** await cf.Run(async con =>
         {
             var cutOff = clock.Now.Add(-cleanupDays);
 
@@ -301,7 +301,7 @@ public class StatsRecorder : BackgroundService
             rowCount = await statsRepo.DeleteMinerStatsBeforeAsync(con, cutOff, ct);
             if(rowCount > 0)
                 logger.Info(() => $"Deleted {rowCount} old minerstats records");
-        });
+        }); */
 
         logger.Info(() => "Stats GC complete");
     }

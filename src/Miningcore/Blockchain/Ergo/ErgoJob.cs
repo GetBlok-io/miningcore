@@ -140,11 +140,11 @@ namespace Miningcore.Blockchain.Ergo
             hasher.Digest(fBytes, hash);
             var fh = new BigInteger(hash, true, true);
             var fhTarget = new Target(fh);
-
+            var hashString = BitConverter.ToString(hash.ToArray()).Replace('-', ' ');
             // diff check
             var stratumDifficulty = context.Difficulty;
             var ratio = fhTarget.Difficulty / stratumDifficulty;
-
+            var realDiff = fhTarget.Difficulty;
             // check if the share meets the much harder block difficulty (block candidate)
             var isBlockCandidate = fh < BlockTemplate.B;
 
@@ -171,7 +171,9 @@ namespace Miningcore.Blockchain.Ergo
             {
                 BlockHeight = Height,
                 NetworkDifficulty = Difficulty,
-                Difficulty = stratumDifficulty / ErgoConstants.ShareMultiplier
+                Difficulty = stratumDifficulty / ErgoConstants.ShareMultiplier,
+                RealDifficulty = realDiff,
+                Hash = hashString
             };
 
             if(isBlockCandidate)

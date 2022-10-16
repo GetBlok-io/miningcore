@@ -13,6 +13,10 @@ namespace Miningcore.Persistence.Model
         public double NetworkDifficulty { get; set; }
         public string IpAddress { get; set; }
         public string Source { get; set; }
+
+        public double RealDifficulty { get; set; }
+
+        public string Hash { get; set; }
         public DateTime Created { get; set; }
     }
 }

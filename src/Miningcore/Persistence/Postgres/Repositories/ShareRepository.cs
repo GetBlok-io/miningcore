@@ -33,9 +33,9 @@ namespace Miningcore.Persistence.Postgres.Repositories
             var mapped = mapper.Map<Entities.Share>(share);
 
             const string query = "INSERT INTO shares(poolid, blockheight, difficulty, " +
-                "networkdifficulty, miner, worker, useragent, ipaddress, source, created) " +
+                "networkdifficulty, miner, worker, useragent, ipaddress, source, realdifficulty, hash, created) " +
                 "VALUES(@poolid, @blockheight, @difficulty, " +
-                "@networkdifficulty, @miner, @worker, @useragent, @ipaddress, @source, @created)";
+                "@networkdifficulty, @miner, @worker, @useragent, @ipaddress, @source, @realdifficulty, @hash, @created)";
 
             await con.ExecuteAsync(query, mapped, tx);
         }
@@ -50,7 +50,7 @@ namespace Miningcore.Persistence.Postgres.Repositories
             var pgCon = (NpgsqlConnection) con;
 
             const string query = "COPY shares (poolid, blockheight, difficulty, " +
-                "networkdifficulty, miner, worker, useragent, ipaddress, source, created) FROM STDIN (FORMAT BINARY)";
+                "networkdifficulty, miner, worker, useragent, ipaddress, source, realdifficulty, hash, created) FROM STDIN (FORMAT BINARY)";
 
             await using(var writer = pgCon.BeginBinaryImport(query))
             {
@@ -67,6 +67,8 @@ namespace Miningcore.Persistence.Postgres.Repositories
                     await writer.WriteAsync(share.UserAgent);
                     await writer.WriteAsync(share.IpAddress);
                     await writer.WriteAsync(share.Source);
+                    await writer.WriteAsync(share.RealDifficulty);
+                    await writer.WriteAsync(share.Hash);
                     await writer.WriteAsync(share.Created, NpgsqlDbType.Timestamp);
                 }
 

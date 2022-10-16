@@ -91,10 +91,15 @@ namespace Miningcore.Blockchain
         [ProtoMember(14)]
         public double NetworkDifficulty { get; set; }
 
-        /// <summary>
-        /// When the share was found
-        /// </summary>
-        [ProtoMember(15)]
-        public DateTime Created { get; set; }
-    }
+    [ProtoMember(15)]
+    public double RealDifficulty { get; set; }
+
+    [ProtoMember(16)]
+    public string Hash { get; set; }
+
+    /// <summary>
+    /// When the share was found
+    /// </summary>
+    [ProtoMember(17)]
+    public DateTime Created { get; set; }
 }

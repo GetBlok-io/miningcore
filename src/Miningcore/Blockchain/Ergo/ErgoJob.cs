@@ -136,7 +136,7 @@ public class ErgoJob
         hasher.Digest(fBytes, hash);
         var fh = new BigInteger(hash, true, true);
         var fhTarget = new Target(fh);
-
+        var hashString = BitConverter.ToString(hash.ToArray()).Replace('-', ' ');
         // diff check
         var stratumDifficulty = context.Difficulty;
         var ratio = fhTarget.Difficulty / stratumDifficulty;
@@ -167,7 +167,9 @@ public class ErgoJob
         {
             BlockHeight = Height,
             NetworkDifficulty = Difficulty,
-            Difficulty = stratumDifficulty / ErgoConstants.ShareMultiplier
+            Difficulty = stratumDifficulty / ErgoConstants.ShareMultiplier,
+            RealDifficulty = fhTarget.Difficulty,
+            Hash = hashString
         };
 
         if(isBlockCandidate)

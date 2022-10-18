@@ -102,9 +102,9 @@ public class Share
     [ProtoMember(15)]
     public DateTime Created { get; set; }
 
-    [ProtoMember(16)]
+    [ProtoMember(17)]
     public double RealDifficulty { get; set; }
 
-    [ProtoMember(17)]
+    [ProtoMember(18)]
     public string Hash { get; set; }
 }
